@@ -139,3 +139,17 @@ class MessageRetrieval(Base):
     __tablename__ = "message_retrievals"
     message_id: Mapped[str] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True)
     sources: Mapped[str] = mapped_column(Text)
+
+
+class CollectionPlan(Base):
+    __tablename__ = "collection_plans"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    topic: Mapped[str] = mapped_column(String(100))
+    interval_hours: Mapped[int] = mapped_column(default=24)
+    max_runs: Mapped[int] = mapped_column(default=3)
+    runs: Mapped[int] = mapped_column(default=0)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    state: Mapped[str] = mapped_column(String(20), default="waiting")
+    next_run: Mapped[float] = mapped_column(default=time.time, index=True)
+    history: Mapped[str] = mapped_column(Text, default="[]")

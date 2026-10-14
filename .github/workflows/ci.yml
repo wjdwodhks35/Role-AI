@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: cp .env.example .env
-      - run: docker compose config --quiet
+      - run: docker compose --profile collection config --quiet
       - run: docker compose up --build --detach --wait --wait-timeout 120
       - run: |
           python - <<'PY'

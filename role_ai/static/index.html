@@ -126,6 +126,19 @@
   <dialog id="learning-dialog">
     <div class="dialog-head"><h2>학습 데이터 관리</h2><button id="learning-close">닫기</button></div>
     <p id="learning-status" class="muted"></p>
+    <details><summary>AI 자동 데이터 수집</summary>
+      <p class="muted">로컬 Ollama와 Hugging Face를 사용합니다. 실행당 최대 30행을 선별하고
+        검수 결과와 출처를 보관합니다. 자동 학습·모델 배포는 하지 않습니다.
+        별도 수집 Worker가 실행 중이어야 일정대로 수집합니다.</p>
+      <form id="collection-form" class="management-form">
+        <label>수집 주제<input id="collection-topic" maxlength="100" required placeholder="예: Python 개발"></label>
+        <label>실행 간격(시간)<input id="collection-hours" type="number" min="1" max="168" value="24" required></label>
+        <label>최대 실행 횟수<input id="collection-runs" type="number" min="1" max="30" value="3" required></label>
+        <button type="submit">자동 수집 계획 등록</button>
+      </form>
+      <button id="collection-refresh">수집 상태 확인</button>
+      <div id="collection-list"></div>
+    </details>
     <form id="dataset-form" class="management-form">
       <label>이름<input id="dataset-name" maxlength="100" required></label>
       <label>출처 설명<input id="dataset-provenance" maxlength="500" required></label>
