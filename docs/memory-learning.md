@@ -128,7 +128,8 @@ UI의 작업 등록은 큐에만 넣으며 API 프로세스가 GPU 학습을 실
     python -m role_ai.training --once
 
 Worker는 큐의 한 작업을 처리하고 종료합니다.
-다른 Worker/데이터 파일 쓰기는 OS 파일 lock으로 충돌을 방지합니다.
+다른 Worker/데이터 파일 쓰기와 Role-AI의 Ollama/OpenClaw 추론 요청은
+동일한 OS 파일 lock으로 충돌을 방지합니다. 외부 프로그램의 GPU 작업은 이 lock에 참여하지 않습니다.
 Ollama/vLLM/Whisper 작업을 직접 중지하고 충분한 VRAM을 확보하세요.
 CUDA가 없거나 VRAM 여유가 85% 미만이면 blocked로 기록합니다.
 이 검사는 GPU 작업 스케줄러나 OOM 방지 보장을 대신하지 않습니다.

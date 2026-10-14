@@ -248,3 +248,16 @@ def test_recover_interrupted_job_requires_new_approval(learning_app):
     result = client.post("/api/learning/jobs/" + job["id"] + "/recover")
     assert result.status_code == 200 and result.json()["state"] == "failed"
     assert client.get("/api/learning/datasets").json()[0]["approval_hash"] is None
+
+
+def test_local_inference_is_blocked_while_worker_holds_storage_lock(learning_app):
+    import asyncio
+    from role_ai.artifacts import storage_lock
+    from role_ai.providers import OllamaProvider, ProviderUnavailable
+    _, settings, _ = learning_app
+    def forbidden(request):
+        pytest.fail("GPU inference must not start under the worker lock")
+    provider = OllamaProvider(settings, httpx.MockTransport(forbidden))
+    with storage_lock(settings.storage_dir):
+        with pytest.raises(ProviderUnavailable):
+            asyncio.run(provider.complete([{"role": "user", "content": "hello"}]))

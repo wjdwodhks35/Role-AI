@@ -130,6 +130,15 @@ class OpenClawGatewayAdapter:
             ) from None
 
     async def reply(self, context, messages, provider, skill):
+        from role_ai.artifacts import storage_lock
+        self.check_access(context)
+        try:
+            with storage_lock(self.settings.storage_dir):
+                return await self._reply(context, messages, provider, skill)
+        except ValueError:
+            raise ProviderUnavailable("로컬 GPU 또는 데이터 작업이 진행 중입니다. 완료 후 다시 시도하세요.") from None
+
+    async def _reply(self, context, messages, provider, skill):
         import httpx
         self.check_access(context)
         try:
