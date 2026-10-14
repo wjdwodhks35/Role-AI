@@ -371,6 +371,7 @@ $("learning-open").addEventListener("click", async () => {
 });
 $("learning-close").addEventListener("click", () => $("learning-dialog").close());
 async function loadLearning() {
+  await loadCollection();
   const status = await api("/api/learning/status");
   $("learning-status").textContent = "SFT + QLoRA · GPU 실행 " +
     (status.training_enabled ? "활성화" : "비활성화") +
@@ -618,6 +619,6 @@ $("collection-form").addEventListener("submit", async event => {
   finally { button.disabled = false; }
 });
 $("collection-refresh").addEventListener("click", async () => {
-  try { await loadCollection(); await loadLearning(); }
+  try { await loadLearning(); }
   catch (error) { notify(error.message); }
 });
