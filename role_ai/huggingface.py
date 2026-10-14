@@ -77,7 +77,9 @@ class HuggingFaceClient:
         if not isinstance(license_id, str):
             license_id = "unknown"
         source = {"type": "huggingface", "repo_id": repo_id, "revision": revision,
-                  "filename": filename, "license": license_id}
+                  "filename": filename, "license": license_id,
+                  "prompt_field": prompt_field, "completion_field": completion_field,
+                  "requested_rows": rows, "scan_limit_bytes": self.settings.hf_max_scan_bytes}
         url = "https://huggingface.co/datasets/" + repo_id + "/resolve/" + revision + "/" + quote(filename, safe="/")
         raw = await self.bounded(url, self.settings.hf_max_scan_bytes, row_limit=rows)
         mapped = [{"prompt": r.get(prompt_field), "completion": r.get(completion_field)}

@@ -98,6 +98,7 @@ def test_documents_compression_split_and_purge(learning_app):
     train, evaluation, _ = store.read(uid, record["id"], record["data_hash"])
     assert not ({r["prompt"] for r in train} & {r["prompt"] for r in evaluation})
     assert (store.path(uid, record["id"]) / "train.jsonl.gz").exists()
+    assert (store.path(uid, record["id"]) / "dataset-card.md").exists()
     assert "synthetic test data" in client.get(
         "/api/learning/datasets/" + record["id"] + "/card").text
     assert calls == []
@@ -137,6 +138,7 @@ def test_reviews_and_user_approval_are_both_required(learning_app):
     assert approval(client, record, privacy_reviewed=False).status_code == 422
     result = approval(client, record).json()
     assert result["state"] == "approved" and result["plan"]["method"] == "sft_qlora"
+    assert result["plan"]["target_skill"] == "developer"
     assert result["approval_hash"]
 
 

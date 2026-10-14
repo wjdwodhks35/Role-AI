@@ -105,7 +105,7 @@ def run_sft(plan, train, evaluation, output):
 
 
 def run_one(settings, trainer=run_sft):
-    if not settings.training_enabled:
+    if not settings.training_enabled or settings.mode != "local":
         raise ValueError("ROLE_AI_TRAINING_ENABLED가 false입니다. GPU 학습을 실행하지 않습니다.")
     store = ArtifactStore(settings)
     engine, factory = build_database(settings.database_url)

@@ -74,6 +74,7 @@ class Decision(BaseModel):
 
 
 class Approval(BaseModel):
+    target_skill: Literal["developer", "meeting", "professor", "counselor"] = "developer"
     data_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
     license_reviewed: bool
     privacy_reviewed: bool

@@ -23,6 +23,7 @@ def test_pinned_bounded_jsonl_import():
     rows, source = asyncio.run(client.sample("owner/data", revision, "train.jsonl", 10,
                                             "prompt", "completion"))
     assert len(rows) == 10 and source["revision"] == revision
+    assert source["prompt_field"] == "prompt" and source["requested_rows"] == 10
     assert len(calls) == 2 and revision in str(calls[-1].url)
 
 
