@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     openai_enabled: bool = False
     openai_api_key: SecretStr = SecretStr("")
     openai_model: str = ""
+    openclaw_enabled: bool = False
+    openclaw_config_path: str = ""
     openclaw_url: str = "http://127.0.0.1:18789"
     openclaw_token: SecretStr = SecretStr("")
 

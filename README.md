@@ -16,12 +16,14 @@
 | Mock Provider | 명시적 로컬 테스트 모드만 허용, 화면에 테스트 표시 |
 | Professor / Developer / Doctor / Counselor | 공유 모델의 System Prompt 기반 선택형 Skill |
 | ModelProvider / AssistantEngine / OpenClaw 어댑터 인터페이스 | 구현 |
-| OpenAI / vLLM / OpenClaw 실제 연결 | 미구현, API 키를 설정해도 호출하지 않음 |
+| OpenAI / vLLM 실제 연결 | 미구현, API 키를 설정해도 호출하지 않음 |
+| OpenClaw HTTP 대화 / 연결 테스트 | 로컬 소유자 전용 구현, 실제 PC 연결 미검증 |
 | Permission Gate | 전체 실행 거부 인터페이스만 구현, 승인 UI/실행기 미구현 |
 | Docker Compose / 자동 테스트 / CI | 구성, 실행 결과는 PR 및 Actions 확인 |
 | RAG / 파일 업로드 / Worker / 회의 / PC 제어 / 학습 | 후속 단계 |
 
-대화 엔진은 현재 ProviderAssistant입니다. OpenClaw 연결 성공을 가장하지 않습니다.
+기본 대화 엔진은 ProviderAssistant이며, 설정한 로컬 소유자는 OpenClaw로 전환할 수 있습니다.
+설정만으로 연결 성공을 표시하지 않습니다. [로컬 OpenClaw 안내](docs/openclaw-local.md)를 참조하세요.
 자동 모델 라우팅, 스트리밍, 비용 한도, 암호화된 사용자별 API 키 등록,
 자동 재시도 및 Provider 장애 대체는 후속 구현입니다.
 Mock으로 자동 대체하지 않으며 유료 API를 호출하지 않습니다.
@@ -30,7 +32,7 @@ Mock으로 자동 대체하지 않으며 유료 API를 호출하지 않습니다
 
     git clone https://github.com/wjdwodhks35/Role-AI.git
     cd Role-AI
-    git switch feature/project-bootstrap
+    git switch dev
     python3 -m venv .venv
     source .venv/bin/activate
     python -m pip install -e ".[test]"
@@ -106,7 +108,8 @@ CI는 Python 테스트, 정적 검사, JavaScript 구문 검사, Compose 유효�
 - 인증은 IP당 분당 10회, 대화/연결 테스트는 사용자당 분당 20회로 제한합니다.
   프로세스 내부 제한이므로 다중 Worker/공개 배포 전 Redis 및 프록시 정책으로 교체해야 합니다.
 
-공개 서비스를 아직 배포하지 않았습니다. 공개 전 HTTPS/신뢰할 프록시/분산 Rate Limit,
+현재 공개 서비스 배포는 계획하지 않습니다. Windows/WSL2 개인용 환경에서 개발하고
+향후 Linux 서버 구축 후 별도 배포합니다. 공개 전 HTTPS/신뢰할 프록시/분산 Rate Limit,
 감사 로그, 데이터 보존/삭제 정책과 백업을 구현·검증해야 합니다.
 ROLE_AI_MODE=public은 Secure 쿠키를 요구하지만 이것만으로 공개 서비스 운영 준비가 끝나지 않습니다.
 Phase 1 DB는 자동 create_all로 초기화합니다. 스키마 변경 전 Alembic 등 마이그레이션을 도입하세요.

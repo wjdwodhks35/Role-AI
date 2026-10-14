@@ -48,6 +48,10 @@
         <span id="engine-badge" class="badge">기본 비서</span>
       </header>
       <section class="controls" aria-label="대화 설정">
+        <label>비서 엔진<select id="engine">
+          <option value="provider_fallback">기본 비서</option>
+          <option value="openclaw" disabled>OpenClaw · 비활성화</option>
+        </select></label>
         <label>모델 Provider<select id="provider"></select></label>
         <label>전문 Skill<select id="skill"></select></label>
         <button id="probe">연결 테스트</button>
@@ -66,8 +70,8 @@
       <span class="eyebrow">시스템 상태</span>
       <h2>플랫폼 기반</h2>
       <dl>
-        <dt>대화 엔진</dt><dd>Provider 기본 비서</dd>
-        <dt>OpenClaw</dt><dd>어댑터 인터페이스 준비<br>실제 연결 미구현</dd>
+        <dt>대화 엔진</dt><dd id="current-engine">기본 비서</dd>
+        <dt>OpenClaw</dt><dd id="gateway-status">비활성화</dd>
         <dt>유료 API 호출</dt><dd>비활성화</dd>
         <dt>PC 및 외부 도구</dt><dd>비활성화</dd>
       </dl>
