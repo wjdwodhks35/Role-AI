@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 training = ["torch>=2.5,<3", "transformers>=4.56,<5", "peft>=0.17,<0.19", "trl>=0.28,<0.29", "datasets>=4,<5", "bitsandbytes>=0.45,<0.50"]
-test = ["pytest>=8,<10", "ruff>=0.9,<1"]
+test = ["pytest>=8,<10", "ruff>=0.9,<1", "openpyxl>=3.1,<4"]
 
 [tool.setuptools.packages.find]
 include = ["role_ai*"]
