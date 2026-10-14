@@ -38,6 +38,7 @@ function showAuth() {
   resetPaidQuote();
   $("usage-history").replaceChildren();
   selectedDocuments.clear(); $("documents-dialog").close();
+  $("collection-list").replaceChildren();
   $("documents-list").replaceChildren(); $("documents-results").textContent = "";
   $("memory-dialog").close(); $("learning-dialog").close();
   $("workspace").hidden = true; $("auth-view").hidden = false;
@@ -370,6 +371,7 @@ $("learning-open").addEventListener("click", async () => {
 });
 $("learning-close").addEventListener("click", () => $("learning-dialog").close());
 async function loadLearning() {
+  await loadCollection();
   const status = await api("/api/learning/status");
   $("learning-status").textContent = "SFT + QLoRA · GPU 실행 " +
     (status.training_enabled ? "활성화" : "비활성화") +
@@ -578,4 +580,45 @@ $("documents-search").addEventListener("click", async () => {
       ? result.sources.map(source => source.filename + " · 발췌 " + source.position +
         "\n" + source.text).join("\n\n") : "일치하는 근거가 없습니다.";
   } catch (error) { notify(error.message); }
+});
+
+
+async function loadCollection() {
+  const plans = await api("/api/learning/collection");
+  $("collection-list").replaceChildren();
+  for (const plan of plans) {
+    const card = document.createElement("article"); card.className = "management-card";
+    const title = document.createElement("strong");
+    title.textContent = plan.topic + " · " + plan.state + " · " +
+      plan.runs + "/" + plan.max_runs + "회 · " + (plan.enabled ? "예약 활성" : "중지");
+    const schedule = document.createElement("p");
+    schedule.textContent = "Worker 실행 시 다음 수집: " + new Date(plan.next_run * 1000).toLocaleString();
+    const history = document.createElement("pre"); history.textContent = JSON.stringify(plan.history, null, 2);
+    card.append(title, schedule, history);
+    if (plan.runs < plan.max_runs) card.append(actionButton(plan.enabled ? "예약 중지" : "예약 재개", async () => {
+      await api("/api/learning/collection/" + plan.id + (plan.enabled ? "/pause" : "/resume"),
+        { method: "POST" }); await loadCollection();
+    }));
+    if (plan.state !== "running") card.append(actionButton("계획 삭제", async () => {
+      await api("/api/learning/collection/" + plan.id, { method: "DELETE" }); await loadCollection();
+    }));
+    $("collection-list").append(card);
+  }
+}
+$("collection-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = event.submitter; button.disabled = true;
+  try {
+    await api("/api/learning/collection", { method: "POST", body: JSON.stringify({
+      topic: $("collection-topic").value, interval_hours: Number($("collection-hours").value),
+      max_runs: Number($("collection-runs").value)
+    }) });
+    notify("자동 수집 계획을 등록했습니다. 실행 중인 Worker가 처리합니다.");
+    await loadCollection();
+  } catch (error) { notify(error.message); }
+  finally { button.disabled = false; }
+});
+$("collection-refresh").addEventListener("click", async () => {
+  try { await loadLearning(); }
+  catch (error) { notify(error.message); }
 });
