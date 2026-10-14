@@ -67,7 +67,8 @@ def approval_app(tmp_path):
             {"prompt": f"Question {i}", "completion": f"Answer {i}"} for i in range(30)
         ], {"type": "huggingface", "license": "mit", "collection": "autonomous_bounded_prefix"})
         reviews = {stage: {"verdict": "pass", "reason": "local fixture",
-                           "provider": "ollama", "data_hash": data_hash}
+                           "provider": "ollama", "data_hash": data_hash,
+                           "scope": "all_selected_train_and_eval_samples"}
                    for stage in ["teacher", "reviewer", "orchestrator"]}
         with app.state.database_factory() as db:
             db.add(DatasetSnapshot(id=sid, user_id=uid, name="collected",

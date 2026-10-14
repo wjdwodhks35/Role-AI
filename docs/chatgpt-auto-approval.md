@@ -17,3 +17,5 @@ GPT는 법적 권리·개인정보 안전·학습 품질을 보장하지 않습�
 Worker는 이제 BillingLedger를 사용해 opt-in 정책이 켜진 경우에만 GPT 승인 경로를 호출합니다. 모드가 꺼져 있으면 기존 무료 로컬 수집/검수 흐름을 유지합니다. 추가 환경변수는 없고 기존 OpenAI/학습 설정을 사용합니다.
 
 자동 테스트는 Mock OpenAI를 이용하며 실제 유료 호출·GPU 학습·브라우저 E2E는 미검증입니다. 공식 기준: [OpenAI Text generation / Responses](https://developers.openai.com/api/docs/guides/text).
+
+기존 3개 미리보기만 로컬 검수한 데이터는 Teacher/Reviewer의 전체 샘플 검수를 다시 완료해야 자동 승인을 받을 수 있습니다.

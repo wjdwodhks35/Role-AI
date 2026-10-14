@@ -21,6 +21,7 @@ from role_ai.database import Base, build_database
 from role_ai.documents import DocumentRepository, documents_router
 from role_ai.gpu_resources import gpu_router
 from role_ai.learning import learning_router
+from role_ai.lifecycle import lifecycle_router
 from role_ai.memory import MemoryRepository, memory_router
 from role_ai.providers import ProviderManager, ProviderUnavailable
 from role_ai.repositories import ConcurrentTurn, Repository
@@ -127,6 +128,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         async with lock:
             yield
 
+    app.include_router(lifecycle_router(authenticated, repository, settings))
     app.include_router(gpu_router(authenticated, settings))
     app.include_router(policy_router(authenticated, repository, settings, providers, factory))
     app.include_router(collection_router(authenticated, repository, settings))

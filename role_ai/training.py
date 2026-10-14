@@ -106,9 +106,35 @@ def _run_sft(plan, train, evaluation, output):
         peft_config=LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05,
                               target_modules="all-linear", task_type="CAUSAL_LM"),
     )
+    benchmark = plan.get("benchmark")
+    from role_ai.quality import benchmark_result, suite_hash
+    if benchmark and suite_hash(benchmark["cases"]) != benchmark["digest"]:
+        raise ValueError("평가 질문 해시가 변경됐습니다.")
+    def task_evaluate():
+        if not benchmark:
+            return None
+        responses = []
+        trainer.model.eval()
+        for case in benchmark["cases"]:
+            messages = [{"role": "system", "content": role_prompt},
+                        {"role": "user", "content": case["prompt"]}]
+            tokens = tokenizer.apply_chat_template(messages, tokenize=True,
+                                                   add_generation_prompt=True, return_tensors="pt")
+            if tokens.shape[-1] + 128 > plan["max_length"]:
+                raise ValueError("평가 질문이 승인된 문맥 길이를 초과합니다.")
+            tokens = tokens.to(trainer.model.device)
+            with torch.inference_mode():
+                generated = trainer.model.generate(
+                    tokens, attention_mask=torch.ones_like(tokens),
+                    do_sample=False, num_beams=1, return_dict_in_generate=False,
+                    max_new_tokens=128, pad_token_id=tokenizer.pad_token_id)
+            responses.append(tokenizer.decode(generated[0, tokens.shape[-1]:], skip_special_tokens=True))
+        return benchmark_result(benchmark["cases"], responses)
+    baseline_tasks = task_evaluate()
     baseline = trainer.evaluate()
     trainer.train()
     after = trainer.evaluate()
+    trained_tasks = task_evaluate()
     import math
     if not all(math.isfinite(metrics["eval_loss"]) for metrics in [baseline, after]):
         raise ValueError("평가 loss가 유효하지 않습니다.")
@@ -117,7 +143,9 @@ def _run_sft(plan, train, evaluation, output):
     return {
         "execution": "gpu_sft_qlora", "baseline_eval_loss": baseline["eval_loss"],
         "trained_eval_loss": after["eval_loss"], "activation": "not_activated",
-        "evaluation_scope": "held-out loss only; task-level benchmarks still required",
+        "evaluation_scope": "held-out loss plus fixed exact-match questions" if benchmark else "held-out loss only; task-level benchmarks still required",
+        "benchmark": {"digest": benchmark["digest"], "baseline": baseline_tasks,
+                      "trained": trained_tasks} if benchmark else None,
     }
 
 
@@ -165,6 +193,10 @@ def run_one(settings, trainer=run_sft):
                     output = store.path(uid, sid) / ("run-" + jid)
                     output.mkdir(exist_ok=False)
                     report = trainer({**plan, "resource_limits": limits}, train, evaluation, output)
+                    if report.get("execution") == "gpu_sft_qlora":
+                        report["adapter_fingerprint"] = model_fingerprint(output / "adapter")
+                        report["base_model_fingerprint"] = plan["base_model_fingerprint"]
+                        report["data_hash"] = item.data_hash
                     used = sum(p.stat().st_size for p in store.root.rglob("*") if p.is_file())
                     if used > settings.artifact_quota_bytes:
                         import shutil

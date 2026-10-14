@@ -175,3 +175,22 @@ class AutoApprovalAudit(Base):
     detail: Mapped[str] = mapped_column(Text, default="{}")
     approval_hash: Mapped[str | None]
     created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+
+class BenchmarkSuite(Base):
+    __tablename__ = "benchmark_suites"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    cases: Mapped[str] = mapped_column(Text)
+    digest: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class CandidateSelection(Base):
+    __tablename__ = "candidate_selections"
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    job_id: Mapped[str | None] = mapped_column(String(36))
+    revision: Mapped[int] = mapped_column(default=1)
+    history: Mapped[str] = mapped_column(Text, default="[]")

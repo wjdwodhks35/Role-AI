@@ -147,6 +147,7 @@ async def auto_approve(settings, factory, providers, uid, sid):
             raise HTTPException(409, "자동 수집·허용 라이선스·30행 이하 범위만 지원합니다.")
         if not all(reviews.get(stage, {}).get("verdict") == "pass"
                    and reviews[stage].get("data_hash") == item.data_hash
+                   and reviews[stage].get("scope") == "all_selected_train_and_eval_samples"
                    for stage in ["teacher", "reviewer"]):
             raise HTTPException(409, "로컬 Teacher/Reviewer 검수가 필요합니다.")
         existing = db.scalar(select(AutoApprovalAudit).where(

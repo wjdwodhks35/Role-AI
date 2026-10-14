@@ -213,6 +213,22 @@
       <label><input id="review-consent" type="checkbox">미리보기 샘플을 OpenAI에 전송하고 비용을 사용하도록 동의합니다.</label>
       <button id="review-send">오케스트레이터 검수 실행</button>
     </section>
+    <details><summary>고정 평가 질문 · 버전 · 작업 현황</summary>
+      <p class="muted">학습 원문에 없는 질문 2~10개와 정답을 JSON으로 등록하세요.
+        정규화한 정답과 완전히 같은지 비교하며 일반 능력을 보장하지 않습니다.
+        배포 후보 선택·되돌리기는 기록만 변경합니다. 실행 중인 채팅 모델은 변경하지 않습니다.</p>
+      <form id="benchmark-form" class="management-form">
+        <label>평가 이름<input id="benchmark-name" maxlength="100" required></label>
+        <label>질문·정답 JSON<textarea id="benchmark-cases" required placeholder='[{"prompt":"2+2는?","expected":"4"},{"prompt":"3+3는?","expected":"6"}]'></textarea></label>
+        <button type="submit">고정 질문 등록</button>
+      </form>
+      <label>이번 수동 학습 승인에 사용할 평가<select id="benchmark-select"><option value="">선택 안 함 · loss만 평가</option></select></label>
+      <button id="lifecycle-refresh">현황 새로고침</button>
+      <p id="candidate-state" class="muted"></p><div id="candidate-versions"></div>
+      <button id="candidate-rollback">이전 배포 후보로 되돌리기</button>
+      <p class="muted">Worker 연결 여부와 실제 진행률은 아직 측정하지 않습니다. 아래는 저장된 작업 상태입니다.</p>
+      <div id="unified-jobs"></div>
+    </details>
     <h3>학습 작업</h3><div id="training-jobs"></div>
   </dialog>
 </body>
