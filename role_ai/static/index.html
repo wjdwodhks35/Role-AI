@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Role-AI · 나의 AI 작업 공간</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div id="notice" role="status" aria-live="polite" hidden></div>
+  <main id="auth-view" class="auth-shell">
+    <section class="intro">
+      <span class="brand">R / Role-AI</span>
+      <h1>생각에서<br>다음 행동까지.</h1>
+      <p>대화와 전문 지식을 연결하는 나만의 AI 작업 공간.</p>
+      <div class="phase-note">Phase 1 · 플랫폼 기반<br>PC 제어, 회의 분석, 외부 도구는 다음 단계에서 제공됩니다.</div>
+    </section>
+    <section class="auth-card">
+      <span class="eyebrow">시작하기</span>
+      <h2>Role-AI 로그인</h2>
+      <form id="auth-form">
+        <label for="email">이메일</label>
+        <input id="email" type="email" autocomplete="username" maxlength="254" required>
+        <label for="password">비밀번호</label>
+        <input id="password" type="password" autocomplete="current-password"
+               minlength="12" maxlength="128" required>
+        <button id="login" type="submit" class="primary">로그인</button>
+        <button id="register" type="button" hidden>회원가입</button>
+      </form>
+      <p class="muted">계정이 없다면 운영자에게 문의하세요. 초기 계정은 서버 환경변수로 생성할 수 있습니다.</p>
+    </section>
+  </main>
+  <div id="workspace" class="workspace" hidden>
+    <aside>
+      <div class="brand">R / Role-AI</div>
+      <button id="new-chat" class="primary">＋ 새 대화</button>
+      <div class="eyebrow">대화 기록</div>
+      <nav id="conversation-list" aria-label="대화 기록"></nav>
+      <div class="sidebar-bottom">
+        <span id="account"></span>
+        <button id="logout">로그아웃</button>
+      </div>
+    </aside>
+    <main class="chat-main">
+      <header>
+        <div><span class="eyebrow">나의 AI 작업 공간</span><h1 id="chat-title">새로운 대화</h1></div>
+        <span id="engine-badge" class="badge">기본 비서</span>
+      </header>
+      <section class="controls" aria-label="대화 설정">
+        <label>모델 Provider<select id="provider"></select></label>
+        <label>전문 Skill<select id="skill"></select></label>
+        <button id="probe">연결 테스트</button>
+      </section>
+      <p id="connection-state" class="muted">모델 연결을 확인해 주세요.</p>
+      <section id="messages" class="messages" aria-label="대화 내용" aria-live="polite"></section>
+      <form id="chat-form" class="composer">
+        <label for="message">메시지</label>
+        <textarea id="message" rows="3" maxlength="4000"
+                  placeholder="무엇을 함께 생각해 볼까요?" required></textarea>
+        <div><span id="work-state">준비됨 · 도구 실행 비활성화</span>
+          <button id="send" type="submit" class="primary">보내기 ↑</button></div>
+      </form>
+    </main>
+    <section class="status-panel" aria-label="시스템 상태">
+      <span class="eyebrow">시스템 상태</span>
+      <h2>플랫폼 기반</h2>
+      <dl>
+        <dt>대화 엔진</dt><dd>Provider 기본 비서</dd>
+        <dt>OpenClaw</dt><dd>어댑터 인터페이스 준비<br>실제 연결 미구현</dd>
+        <dt>유료 API 호출</dt><dd>비활성화</dd>
+        <dt>PC 및 외부 도구</dt><dd>비활성화</dd>
+      </dl>
+      <h3>다음 단계</h3>
+      <p>OpenClaw 연동 · API 설정<br>Memory / RAG · 권한 승인<br>작업 큐 · 회의 업로드</p>
+      <p class="muted">아직 제공되지 않는 기능은 실행되지 않습니다. Mock은 실제 AI 응답이 아닌 테스트용입니다.</p>
+    </section>
+  </div>
+</body>
+</html>

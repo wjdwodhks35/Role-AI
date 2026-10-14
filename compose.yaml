@@ -1,0 +1,20 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      ROLE_AI_DATABASE_URL: sqlite:////app/data/role-ai.db
+      ROLE_AI_OLLAMA_URL: http://host.docker.internal:11434
+    ports:
+      - "127.0.0.1:8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - role_ai_data:/app/data
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  role_ai_data:
