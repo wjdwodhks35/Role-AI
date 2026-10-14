@@ -93,14 +93,15 @@
   </div>
   <dialog id="documents-dialog">
     <div class="dialog-head"><h2>문서와 검색 근거</h2><button id="documents-close">닫기</button></div>
-    <p class="muted">UTF-8 텍스트·Markdown, 파일당 최대 48KB 및 16,000자, 계정당 32개.
-    문서는 학습·장기 기억에 자동으로 저장되지 않습니다. 검색은 키워드 방식입니다.</p>
+    <p class="muted">UTF-8 텍스트·Markdown 최대 48KB, PDF 최대 512KB·20페이지. 추출 텍스트는 최대 16,000자, 계정당 32개. PDF 원본은 보관하지 않으며 스캔 PDF OCR은 미지원.
+    문서는 학습·장기 기억에 자동으로 저장되지 않습니다. 키워드 또는 설정된 로컬 모델의 의미 검색을 선택할 수 있습니다.</p>
     <form id="documents-form" class="management-form">
-      <label>파일<input id="documents-file" type="file" accept=".txt,.md,text/plain,text/markdown" required></label>
+      <label>파일<input id="documents-file" type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" required></label>
       <label>프로젝트<input id="documents-project" maxlength="80" placeholder="공통"></label>
       <button type="submit" class="primary">문서 보관</button>
     </form>
     <label>검색어<input id="documents-query" maxlength="200"></label>
+    <label>문서 검색 방식<select id="retrieval-mode"><option value="keyword">키워드</option><option value="semantic">로컬 의미 검색 · 모델 설정 필요</option></select></label>
     <button id="documents-search">현재 프로젝트에서 검색</button>
     <pre id="documents-results"></pre>
     <p class="muted">대화에 사용할 문서를 최대 5개 선택하세요.채팅의 프로젝트와 문서의 프로젝트를 맞춰주세요.

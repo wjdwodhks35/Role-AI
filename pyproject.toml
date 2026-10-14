@@ -13,6 +13,7 @@ dependencies = [
   "pydantic-settings>=2.6,<3",
   "sqlalchemy>=2.0,<2.1",
   "httpx>=0.28,<0.29",
+  "pypdf>=6.20.1,<7",
 ]
 
 [project.optional-dependencies]

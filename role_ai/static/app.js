@@ -132,6 +132,8 @@ async function enterWorkspace(data) {
   csrf = data.csrf_token; $("account").textContent = data.user.email;
   $("auth-view").hidden = true; $("workspace").hidden = false;
   const status = await api("/api/status");
+  $("retrieval-mode").value = "keyword";
+  $("retrieval-mode").querySelector('[value="semantic"]').textContent = status.semantic_available ? "로컬 의미 검색 · 연결 미검증" : "로컬 의미 검색 · 모델 설정 필요";
   $("learning-open").hidden = !status.learning_available;
   $("paid-status").textContent = status.paid_api_calls === "opt_in" ? "요청별 동의 필요" : "비활성화";
   $("usage-button").hidden = status.paid_api_calls !== "opt_in";
@@ -262,7 +264,7 @@ $("chat-form").addEventListener("submit", async (event) => {
     }
     const result = await api("/api/conversations/" + activeConversation.id + "/chat", {
       method: "POST", body: JSON.stringify({
-        document_ids: [...selectedDocuments], content, project: $("project").value, allow_paid: isPaid && $("paid-consent").checked, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
+        retrieval_mode: $("retrieval-mode").value, document_ids: [...selectedDocuments], content, project: $("project").value, allow_paid: isPaid && $("paid-consent").checked, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
       })
     });
     $("message").value = ""; await openConversation(activeConversation);
@@ -519,7 +521,7 @@ async function loadDocuments() {
     label.append(check, document.createTextNode(record.filename + " · " +
       (record.project || "공통") + " · " + record.characters + "자"));
     const link = document.createElement("a"); link.href = "/api/documents/" + record.id + "/export";
-    link.textContent = "원문 내려받기"; link.download = record.filename;
+    link.textContent = record.filename.toLowerCase().endsWith(".pdf") ? "추출 텍스트 내려받기" : "원문 내려받기"; link.download = record.filename.toLowerCase().endsWith(".pdf") ? record.filename + ".txt" : record.filename;
     card.append(label, link, actionButton("삭제", async () => {
       if (!window.confirm("문서 원문과 검색용 발췌를 삭제할까요? 대화와 출처 식별자는 남습니다.")) return;
       await api("/api/documents/" + record.id, { method: "DELETE" });
@@ -539,12 +541,24 @@ $("documents-form").addEventListener("submit", async (event) => {
   const button = event.submitter; button.disabled = true;
   try {
     const file = $("documents-file").files[0];
-    if (!file || file.size > 48 * 1024) throw new Error("48KB 이하 파일을 선택하세요.");
-    const content = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
-    if (content.length > 16000) throw new Error("16,000자 이하 문서를 선택하세요.");
-    const result = await api("/api/documents", { method: "POST", body: JSON.stringify({
-      filename: file.name, content, project: $("documents-project").value
-    }) });
+    if (!file) throw new Error("파일을 선택하세요.");
+    let result;
+    if (file.name.toLowerCase().endsWith(".pdf")) {
+      if (file.size > 512 * 1024) throw new Error("512KB 이하 PDF를 선택하세요.");
+      const response = await fetch("/api/documents/pdf?" + new URLSearchParams({
+        filename: file.name, project: $("documents-project").value
+      }), { method: "POST", body: file, credentials: "same-origin",
+        headers: { "Content-Type": "application/pdf", "X-CSRF-Token": csrf } });
+      result = await response.json();
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "PDF를 확인하세요.");
+    } else {
+      if (file.size > 48 * 1024) throw new Error("48KB 이하 텍스트 파일을 선택하세요.");
+      const content = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+      if (content.length > 16000) throw new Error("16,000자 이하 문서를 선택하세요.");
+      result = await api("/api/documents", { method: "POST", body: JSON.stringify({
+        filename: file.name, content, project: $("documents-project").value
+      }) });
+    }
     notify(result.duplicate ? "같은 프로젝트에 이미 저장된 문서입니다." : "문서를 보관했습니다.");
     $("documents-file").value = ""; await loadDocuments();
   } catch (error) { notify(error.message); }
@@ -552,9 +566,14 @@ $("documents-form").addEventListener("submit", async (event) => {
 });
 $("documents-search").addEventListener("click", async () => {
   try {
-    const result = await api("/api/documents/search?" + new URLSearchParams({
-      q: $("documents-query").value, project: $("project").value
-    }));
+    const result = $("retrieval-mode").value === "semantic"
+      ? await api("/api/documents/semantic", { method: "POST", body: JSON.stringify({
+          query: $("documents-query").value, project: $("project").value,
+          document_ids: [...selectedDocuments]
+        }) })
+      : await api("/api/documents/search?" + new URLSearchParams({
+          q: $("documents-query").value, project: $("project").value
+        }));
     $("documents-results").textContent = result.sources.length
       ? result.sources.map(source => source.filename + " · 발췌 " + source.position +
         "\n" + source.text).join("\n\n") : "일치하는 근거가 없습니다.";

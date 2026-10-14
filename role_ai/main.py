@@ -22,6 +22,7 @@ from role_ai.memory import MemoryRepository, memory_router
 from role_ai.providers import ProviderManager, ProviderUnavailable
 from role_ai.repositories import ConcurrentTurn, Repository
 from role_ai.schemas import ChatRequest, ConversationCreate, Credentials, ProviderName
+from role_ai.semantic import SemanticSearch
 from role_ai.security import RateLimiter, hash_password, token_hash, verify_password
 from role_ai.skills import SKILLS
 
@@ -41,11 +42,12 @@ def message_dict(item):
     }
 
 
-def create_app(settings: Settings | None = None, providers=None, gateway_transport=None, openai_transport=None, hf_transport=None):
+def create_app(settings: Settings | None = None, providers=None, gateway_transport=None, openai_transport=None, hf_transport=None, embedding_transport=None):
     settings = settings or Settings()
     engine, factory = build_database(settings.database_url)
     ledger = BillingLedger(settings, factory)
     providers = providers or ProviderManager(settings, ledger=ledger, openai_transport=openai_transport)
+    semantic = SemanticSearch(settings, embedding_transport)
     assistant = AssistantManager(settings, providers, gateway_transport)
     turn_locks = [asyncio.Lock() for _ in range(32)]
     auth_limiter = RateLimiter(maximum=10)
@@ -74,6 +76,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     app.state.database_factory = factory
     app.state.providers = providers
     app.state.billing = ledger
+    app.state.semantic = semantic
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -121,7 +124,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         async with lock:
             yield
 
-    app.include_router(documents_router(authenticated, repository))
+    app.include_router(documents_router(authenticated, repository, semantic))
     app.include_router(memory_router(authenticated, repository, providers))
     app.include_router(learning_router(authenticated, repository, settings, providers, ledger, hf_transport))
 
@@ -211,6 +214,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             if item["id"] == "openai" and not paid_available:
                 item.update(usable=False, paid_calls=False, state="disabled")
         return {
+            "semantic_available": bool(settings.embedding_model),
             "phase": 1, "assistant_engine": "provider_fallback",
             "learning_available": actor[0].is_owner and settings.mode == "local",
             "openclaw": ("not_verified" if assistant.available(actor[0].is_owner) else "disabled"),
@@ -325,8 +329,17 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             or (body.provider or settings.default_provider) not in {"ollama", "mock"}
         ):
             raise HTTPException(403, "문서 대화는 Ollama 또는 테스트 Mock만 지원합니다.")
-        document_context, sources = DocumentRepository(repo.db).context(
-            user.id, body.content, body.project, body.document_ids)
+        if body.retrieval_mode == "semantic":
+            if not body.document_ids:
+                raise HTTPException(422, "의미 검색에 사용할 문서를 선택하세요.")
+            selected = DocumentRepository(repo.db).selected_sources(
+                user.id, body.project, body.document_ids)
+            repo.db.rollback()
+            sources = await semantic.search(body.content[:200], selected)
+            document_context, sources = DocumentRepository.bound(sources)
+        else:
+            document_context, sources = DocumentRepository(repo.db).context(
+                user.id, body.content, body.project, body.document_ids)
         revision = conversation.revision
         history = [{"role": m.role, "content": m.content}
                    for m in repo.messages(user.id, conversation_id)]
@@ -352,7 +365,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             "skill": body.skill, "simulated": result.simulated,
             "usage": {"input_tokens": result.input_tokens, "output_tokens": result.output_tokens},
             "assistant_engine": body.engine, "tools": [],
-            "retrieval": {"mode": "keyword", "sources": sources, "answer_verified": False},
+            "retrieval": {"mode": body.retrieval_mode, "sources": sources, "answer_verified": False},
             "billing": {"calculated_usd": result.cost_usd, "state": result.billing_state},
         }
 

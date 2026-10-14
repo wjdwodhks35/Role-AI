@@ -3,11 +3,13 @@ import hashlib
 import json
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select, text
 
 from role_ai.models import Document, DocumentChunk
+from role_ai.pdf_extract import extract_pdf
+from role_ai.semantic import SemanticRequest
 
 MAX_DOCUMENTS = 32
 MAX_TEXT = 16000
@@ -106,8 +108,22 @@ class DocumentRepository:
         ranked.sort(key=lambda row: (-row[0], row[1], row[2]))
         return [row[3] for row in ranked[:5]]
 
-    def context(self, uid, query, project, document_ids):
-        sources = self.search(uid, query, project, document_ids)
+    def selected_sources(self, uid, project, document_ids):
+        for did in set(document_ids):
+            item = self.get(uid, did)
+            if item.project not in {"", project}:
+                raise HTTPException(404, "현재 프로젝트에서 문서를 찾을 수 없습니다.")
+        if not document_ids:
+            return []
+        query = select(DocumentChunk, Document).join(
+            Document, Document.id == DocumentChunk.document_id).where(
+            Document.user_id == uid, Document.id.in_(document_ids))
+        return [{"document_id": d.id, "chunk_id": c.id, "filename": d.filename,
+                 "project": d.project, "position": c.position, "text": c.content}
+                for c, d in self.db.execute(query)]
+
+    @staticmethod
+    def bound(sources):
         bounded = []
         for source in sources:
             if len(json.dumps(bounded + [source], ensure_ascii=False)) > 4500:
@@ -115,8 +131,12 @@ class DocumentRepository:
             bounded.append(source)
         return json.dumps(bounded, ensure_ascii=False), bounded
 
+    def context(self, uid, query, project, document_ids):
+        sources = self.search(uid, query, project, document_ids)
+        return self.bound(sources)
 
-def documents_router(authenticated, repository):
+
+def documents_router(authenticated, repository, semantic):
     router = APIRouter(prefix="/api/documents", tags=["documents"])
 
     @router.get("")
@@ -129,6 +149,42 @@ def documents_router(authenticated, repository):
         item, duplicate = DocumentRepository(repo.db).create(uid, body)
         repo.db.commit()
         return {**document_dict(item), "duplicate": duplicate}
+
+    @router.post("/pdf", status_code=201)
+    async def pdf(request: Request, filename: str, project: str = "",
+                  actor=Depends(authenticated), repo=Depends(repository)):
+        if (not filename.lower().endswith(".pdf") or len(filename) > 120
+                or len(project) > 80):
+            raise HTTPException(422, "PDF 이름 또는 프로젝트를 확인하세요.")
+        try:
+            validated = DocumentInput(filename=filename[:-4] + ".txt", content="placeholder",
+                                      project=project)
+        except ValueError:
+            raise HTTPException(422, "PDF 파일 이름이 올바르지 않습니다.") from None
+        uid = actor[0].id
+        repo.db.rollback()
+        from starlette.concurrency import run_in_threadpool
+        content = await run_in_threadpool(extract_pdf, await request.body())
+        try:
+            body = DocumentInput(filename=validated.filename, content=content, project=project)
+        except ValueError:
+            raise HTTPException(422, "추출 텍스트가 저장 기준을 충족하지 않습니다.") from None
+        item, duplicate = DocumentRepository(repo.db).create(uid, body)
+        if not duplicate:
+            item.filename = filename
+        repo.db.commit()
+        return {**document_dict(item), "duplicate": duplicate,
+                "format": "extracted_pdf_text", "original_retained": False}
+
+    @router.post("/semantic")
+    async def semantic_search(body: SemanticRequest, actor=Depends(authenticated),
+                              repo=Depends(repository)):
+        sources = DocumentRepository(repo.db).selected_sources(
+            actor[0].id, body.project, body.document_ids)
+        repo.db.rollback()
+        results = await semantic.search(body.query, sources)
+        return {"mode": "semantic", "model": semantic.settings.embedding_model,
+                "sources": results, "answer_verified": False}
 
     @router.get("/search")
     def search(q: str = "", project: str = "", actor=Depends(authenticated),

@@ -10,13 +10,14 @@ class BodyLimitMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] in {"GET", "HEAD", "OPTIONS"}:
             return await self.app(scope, receive, send)
+        maximum = 524288 if scope.get("path") == "/api/documents/pdf" else self.maximum
         chunks, size = [], 0
         while True:
             message = await receive()
             if message["type"] == "http.disconnect":
                 return
             size += len(message.get("body", b""))
-            if size > self.maximum:
+            if size > maximum:
                 response = JSONResponse({"detail": "요청 크기 제한을 초과했습니다."}, status_code=413)
                 return await response(scope, receive, send)
             chunks.append(message)

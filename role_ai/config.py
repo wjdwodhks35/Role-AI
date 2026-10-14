@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     bootstrap_password: SecretStr = SecretStr("")
     default_provider: Literal["ollama", "vllm", "openai", "mock"] = "ollama"
     ollama_url: str = "http://127.0.0.1:11434"
+    embedding_model: str = Field(default="", max_length=100, pattern=r"^[A-Za-z0-9._:-]*$")
+    embedding_min_score: float = Field(default=0.35, ge=-1, le=1, allow_inf_nan=False)
     ollama_model: str = "qwen2.5:7b"
     provider_timeout_seconds: float = Field(default=60, gt=0, le=300)
     demo_enabled: bool = False
