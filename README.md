@@ -158,3 +158,5 @@ PDF 텍스트 추출 및 Ollama 의미 검색은 [설정·제한 안내](docs/pd
 AI가 주제별 데이터셋을 자동 탐색·선별·수집하고 로컬 검수하는 [자동 수집 Worker](docs/automatic-collection.md)를 추가했습니다. 사용자 최종 승인 전에는 학습하지 않습니다.
 
 자동 수집 데이터의 최종 학습 판단을 GPT에 위임하는 [ChatGPT 자동 허용 모드](docs/chatgpt-auto-approval.md)를 추가했습니다. 기본 꺼짐이며 명시적 비용·외부 전송·범위 설정이 필요합니다.
+
+최대 VRAM·시스템 여유·작업별 추정치를 설정하는 [GPU 메모리 설정](docs/gpu-memory-settings.md)을 추가했습니다. 작업 전 검사이며 시스템 전체의 강제 VRAM 제한은 아닙니다.

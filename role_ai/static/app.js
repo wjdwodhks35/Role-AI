@@ -37,7 +37,7 @@ function showAuth() {
   csrf = ""; activeConversation = null;
   resetPaidQuote();
   $("usage-history").replaceChildren();
-  selectedDocuments.clear(); $("documents-dialog").close();
+  selectedDocuments.clear(); $("documents-dialog").close(); $("gpu-dialog").close();
   $("collection-list").replaceChildren(); $("auto-policy-history").replaceChildren();
   $("documents-list").replaceChildren(); $("documents-results").textContent = "";
   $("memory-dialog").close(); $("learning-dialog").close();
@@ -136,6 +136,7 @@ async function enterWorkspace(data) {
   $("retrieval-mode").value = "keyword";
   $("retrieval-mode").querySelector('[value="semantic"]').textContent = status.semantic_available ? "로컬 의미 검색 · 연결 미검증" : "로컬 의미 검색 · 모델 설정 필요";
   $("learning-open").hidden = !status.learning_available;
+  $("gpu-open").hidden = !status.resource_settings_available;
   $("paid-status").textContent = status.paid_api_calls === "opt_in" ? "요청별 동의 필요" : "비활성화";
   $("usage-button").hidden = status.paid_api_calls !== "opt_in";
   resetPaidQuote();
@@ -668,6 +669,49 @@ $("auto-policy-form").addEventListener("submit", async event => {
       max_length: Number($("auto-policy-length").value)
     }) });
     notify("자동 허용 정책을 저장했습니다."); await loadLearning();
+  } catch (error) { notify(error.message); }
+  finally { button.disabled = false; }
+});
+
+
+async function loadGpuSettings() {
+  const data = await api("/api/settings/gpu-memory");
+  const policy = data.policy, measurement = data.measurement;
+  $("gpu-enabled").checked = policy.enabled;
+  for (const [id, key] of [
+    ["gpu-limit", "limit_mib"], ["gpu-reserve", "reserve_mib"],
+    ["gpu-inference", "inference_mib"], ["gpu-embedding", "embedding_mib"],
+    ["gpu-training", "training_mib"]
+  ]) $(id).value = policy[key] / 1024;
+  $("gpu-measurement").textContent = data.policy_state === "invalid"
+    ? "저장된 GPU 설정이 손상됐습니다. 작업은 차단됩니다. 아래 값을 확인하고 다시 저장하세요."
+    : measurement.state === "available"
+    ? "GPU 0 · 전체 " + (measurement.total_mib / 1024).toFixed(2) +
+      "GiB · 사용 " + (measurement.used_mib / 1024).toFixed(2) +
+      "GiB · 유효 한도 " + (measurement.effective_limit_mib / 1024).toFixed(2) +
+      "GiB · 검사 " + (policy.enabled ? "켜짐" : "꺼짐")
+    : "GPU 사용량 미확인: " + measurement.reason;
+}
+$("gpu-open").addEventListener("click", async () => {
+  try { await loadGpuSettings(); $("gpu-dialog").showModal(); }
+  catch (error) { notify(error.message); }
+});
+$("gpu-close").addEventListener("click", () => $("gpu-dialog").close());
+$("gpu-refresh").addEventListener("click", () => loadGpuSettings().catch(error => notify(error.message)));
+$("gpu-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = event.submitter; button.disabled = true;
+  try {
+    await api("/api/settings/gpu-memory", { method: "PUT", body: JSON.stringify({
+      enabled: $("gpu-enabled").checked,
+      limit_mib: Math.round(Number($("gpu-limit").value) * 1024),
+      reserve_mib: Math.round(Number($("gpu-reserve").value) * 1024),
+      inference_mib: Math.round(Number($("gpu-inference").value) * 1024),
+      embedding_mib: Math.round(Number($("gpu-embedding").value) * 1024),
+      training_mib: Math.round(Number($("gpu-training").value) * 1024)
+    }) });
+    notify("GPU 메모리 설정을 저장했습니다. 다음 작업부터 적용됩니다.");
+    await loadGpuSettings();
   } catch (error) { notify(error.message); }
   finally { button.disabled = false; }
 });

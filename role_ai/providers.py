@@ -4,6 +4,7 @@ from typing import Protocol
 import httpx
 
 from role_ai.config import Settings
+from role_ai.gpu_resources import GpuBudgetError, preflight, read_policy
 
 
 class ProviderUnavailable(Exception):
@@ -45,7 +46,10 @@ class OllamaProvider:
         from role_ai.artifacts import storage_lock
         try:
             with storage_lock(self.settings.storage_dir):
+                preflight(self.settings, "inference")
                 return await self._complete(messages)
+        except GpuBudgetError as exc:
+            raise ProviderUnavailable(str(exc)) from None
         except ValueError:
             raise ProviderUnavailable("로컬 GPU 또는 데이터 작업이 진행 중입니다. 완료 후 다시 시도하세요.") from None
 
@@ -56,7 +60,7 @@ class OllamaProvider:
                     "model": self.settings.ollama_model,
                     "messages": messages,
                     "stream": False,
-                    "keep_alive": "5m",
+                    "keep_alive": 0 if read_policy(self.settings).enabled else "5m",
                     "options": {"num_predict": 512, "num_ctx": 4096},
                 })
                 response.raise_for_status()

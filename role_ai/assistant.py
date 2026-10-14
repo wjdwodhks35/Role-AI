@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from role_ai.providers import ModelReply, ProviderManager, ProviderUnavailable
+from role_ai.gpu_resources import GpuBudgetError, preflight
 from role_ai.skills import system_prompt
 
 
@@ -141,7 +142,10 @@ class OpenClawGatewayAdapter:
         self.check_access(context)
         try:
             with storage_lock(self.settings.storage_dir):
+                preflight(self.settings, "inference")
                 return await self._reply(context, messages, provider, skill)
+        except GpuBudgetError as exc:
+            raise ProviderUnavailable(str(exc)) from None
         except ValueError:
             raise ProviderUnavailable("로컬 GPU 또는 데이터 작업이 진행 중입니다. 완료 후 다시 시도하세요.") from None
 

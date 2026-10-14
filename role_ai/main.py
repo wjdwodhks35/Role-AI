@@ -19,6 +19,7 @@ from role_ai.collection import collection_router
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
 from role_ai.documents import DocumentRepository, documents_router
+from role_ai.gpu_resources import gpu_router
 from role_ai.learning import learning_router
 from role_ai.memory import MemoryRepository, memory_router
 from role_ai.providers import ProviderManager, ProviderUnavailable
@@ -126,6 +127,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         async with lock:
             yield
 
+    app.include_router(gpu_router(authenticated, settings))
     app.include_router(policy_router(authenticated, repository, settings, providers, factory))
     app.include_router(collection_router(authenticated, repository, settings))
     app.include_router(documents_router(authenticated, repository, semantic))
@@ -218,6 +220,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             if item["id"] == "openai" and not paid_available:
                 item.update(usable=False, paid_calls=False, state="disabled")
         return {
+            "resource_settings_available": actor[0].is_owner and settings.mode == "local",
             "semantic_available": bool(settings.embedding_model),
             "phase": 1, "assistant_engine": "provider_fallback",
             "learning_available": actor[0].is_owner and settings.mode == "local",
