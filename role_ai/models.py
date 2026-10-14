@@ -114,3 +114,28 @@ class TrainingJob(Base):
     state: Mapped[str] = mapped_column(String(30), default="queued", index=True)
     report: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class Document(Base):
+    __tablename__ = "documents"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    filename: Mapped[str] = mapped_column(String(120))
+    project: Mapped[str] = mapped_column(String(80), default="")
+    digest: Mapped[str] = mapped_column(String(64))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    position: Mapped[int]
+    content: Mapped[str] = mapped_column(Text)
+
+
+class MessageRetrieval(Base):
+    __tablename__ = "message_retrievals"
+    message_id: Mapped[str] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True)
+    sources: Mapped[str] = mapped_column(Text)

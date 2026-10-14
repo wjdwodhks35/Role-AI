@@ -151,3 +151,4 @@ main은 검증된 릴리스만 반영합니다. 후속 기능은 독립적인 fe
 다음 계획은 [docs/architecture.md](docs/architecture.md) 및
 [docs/roadmap.md](docs/roadmap.md)를 참조하세요.
 \n## 기억과 학습 관리\n\n채팅 화면의 기억 관리·학습 데이터 버튼을 사용합니다. 학습 관리는 로컬 소유자 전용입니다.\n[기억·학습 실행 안내](docs/memory-learning.md)에 파일 구조, 제한, 검수·승인, Worker 설정과 미검증 범위를 정리했습니다.\n개인 기억을 자동으로 학습에 사용하거나 전체 Hugging Face 데이터셋을 다운로드하지 않습니다.\n
+로컬 텍스트·Markdown 문서 보관/검색 및 무료 문서 대화는 [문서 검색 안내](docs/local-document-rag.md)를 참고하세요. 유료 API/원격 임베딩을 추가로 사용하지 않습니다.

@@ -2,6 +2,7 @@
 const $ = (id) => document.getElementById(id);
 let csrf = "", activeConversation = null, busy = false;
 let noticeTimer;
+const selectedDocuments = new Set();
 let paidQuoteKey = null;
 let editingMemory = null, reviewingDataset = null;
 
@@ -36,6 +37,8 @@ function showAuth() {
   csrf = ""; activeConversation = null;
   resetPaidQuote();
   $("usage-history").replaceChildren();
+  selectedDocuments.clear(); $("documents-dialog").close();
+  $("documents-list").replaceChildren(); $("documents-results").textContent = "";
   $("memory-dialog").close(); $("learning-dialog").close();
   $("workspace").hidden = true; $("auth-view").hidden = false;
   $("messages").replaceChildren(); $("conversation-list").replaceChildren();
@@ -68,6 +71,20 @@ function addMessage(message) {
     ["Role-AI", message.provider, message.model, message.skill].filter(Boolean).join(" · ");
   const text = document.createElement("div"); text.textContent = message.content;
   element.append(meta, text);
+  if (message.sources?.length) {
+    const references = document.createElement("details");
+    const label = document.createElement("summary");
+    label.textContent = "검색된 참고 문서 · 답변 근거 자동 검증 아님";
+    references.append(label);
+    for (const source of message.sources) {
+      references.append(actionButton(source.filename + " · 발췌 " + source.position, async () => {
+        const record = await api("/api/documents/" + source.document_id);
+        $("documents-results").textContent = record.content;
+        $("documents-dialog").showModal();
+      }));
+    }
+    element.append(references);
+  }
   if (message.role === "user" && message.id) {
     const remember = document.createElement("button"); remember.textContent = "기억 후보 추출";
     remember.addEventListener("click", async () => {
@@ -217,6 +234,9 @@ $("chat-form").addEventListener("submit", async (event) => {
       method: "POST", body: JSON.stringify({ title: content.slice(0, 60) })
     });
     const isPaid = $("engine").value === "provider_fallback" && $("provider").value === "openai";
+    if (selectedDocuments.size && (isPaid || $("engine").value !== "provider_fallback")) {
+      throw new Error("문서 대화는 기본 비서와 Ollama 또는 Mock을 선택하세요.");
+    }
     const quoteKey = JSON.stringify([activeConversation.id, content, $("skill").value, $("project").value]);
     if (isPaid && paidQuoteKey !== quoteKey) {
       const quote = await api("/api/conversations/" + activeConversation.id + "/quote", {
@@ -242,7 +262,7 @@ $("chat-form").addEventListener("submit", async (event) => {
     }
     const result = await api("/api/conversations/" + activeConversation.id + "/chat", {
       method: "POST", body: JSON.stringify({
-        content, project: $("project").value, allow_paid: isPaid && $("paid-consent").checked, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
+        document_ids: [...selectedDocuments], content, project: $("project").value, allow_paid: isPaid && $("paid-consent").checked, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
       })
     });
     $("message").value = ""; await openConversation(activeConversation);
@@ -475,4 +495,67 @@ $("review-send").addEventListener("click", async () => {
     await loadLearning();
   } catch (error) { notify(error.message); }
   finally { $("review-send").disabled = false; $("review-consent").checked = false; }
+});
+
+
+async function loadDocuments() {
+  const records = await api("/api/documents");
+  const available = new Set(records.map(record => record.id));
+  for (const id of selectedDocuments) if (!available.has(id)) selectedDocuments.delete(id);
+  $("documents-list").replaceChildren();
+  for (const record of records) {
+    const card = document.createElement("article"); card.className = "management-card";
+    const label = document.createElement("label");
+    const check = document.createElement("input"); check.type = "checkbox";
+    check.checked = selectedDocuments.has(record.id);
+    check.addEventListener("change", () => {
+      if (check.checked && selectedDocuments.size >= 5) {
+        check.checked = false; notify("문서는 최대 5개 선택하세요."); return;
+      }
+      if (check.checked) selectedDocuments.add(record.id);
+      else selectedDocuments.delete(record.id);
+    });
+    label.append(check, document.createTextNode(record.filename + " · " +
+      (record.project || "공통") + " · " + record.characters + "자"));
+    const link = document.createElement("a"); link.href = "/api/documents/" + record.id + "/export";
+    link.textContent = "원문 내려받기"; link.download = record.filename;
+    card.append(label, link, actionButton("삭제", async () => {
+      if (!window.confirm("문서 원문과 검색용 발췌를 삭제할까요? 대화와 출처 식별자는 남습니다.")) return;
+      await api("/api/documents/" + record.id, { method: "DELETE" });
+      selectedDocuments.delete(record.id); $("documents-results").textContent = "";
+      await loadDocuments();
+    }));
+    $("documents-list").append(card);
+  }
+}
+$("documents-open").addEventListener("click", async () => {
+  try { await loadDocuments(); $("documents-dialog").showModal(); }
+  catch (error) { notify(error.message); }
+});
+$("documents-close").addEventListener("click", () => $("documents-dialog").close());
+$("documents-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = event.submitter; button.disabled = true;
+  try {
+    const file = $("documents-file").files[0];
+    if (!file || file.size > 48 * 1024) throw new Error("48KB 이하 파일을 선택하세요.");
+    const content = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+    if (content.length > 16000) throw new Error("16,000자 이하 문서를 선택하세요.");
+    const result = await api("/api/documents", { method: "POST", body: JSON.stringify({
+      filename: file.name, content, project: $("documents-project").value
+    }) });
+    notify(result.duplicate ? "같은 프로젝트에 이미 저장된 문서입니다." : "문서를 보관했습니다.");
+    $("documents-file").value = ""; await loadDocuments();
+  } catch (error) { notify(error.message); }
+  finally { button.disabled = false; }
+});
+$("documents-search").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/documents/search?" + new URLSearchParams({
+      q: $("documents-query").value, project: $("project").value
+    }));
+    $("documents-results").textContent = result.sources.length
+      ? result.sources.map(source => source.filename + " · 발췌 " + source.position +
+        "\n" + source.text).join("\n\n") : "일치하는 근거가 없습니다.";
+  } catch (error) { notify(error.message); }
 });

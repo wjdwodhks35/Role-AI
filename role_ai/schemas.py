@@ -31,6 +31,7 @@ class ConversationCreate(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    document_ids: list[str] = Field(default_factory=list, max_length=5)
     project: str = Field(default="", max_length=80)
     allow_paid: bool = False
     engine: Literal["provider_fallback", "openclaw"] = "provider_fallback"
