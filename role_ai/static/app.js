@@ -38,7 +38,7 @@ function showAuth() {
   resetPaidQuote();
   $("usage-history").replaceChildren();
   selectedDocuments.clear(); $("documents-dialog").close();
-  $("collection-list").replaceChildren();
+  $("collection-list").replaceChildren(); $("auto-policy-history").replaceChildren();
   $("documents-list").replaceChildren(); $("documents-results").textContent = "";
   $("memory-dialog").close(); $("learning-dialog").close();
   $("workspace").hidden = true; $("auth-view").hidden = false;
@@ -372,6 +372,7 @@ $("learning-open").addEventListener("click", async () => {
 $("learning-close").addEventListener("click", () => $("learning-dialog").close());
 async function loadLearning() {
   await loadCollection();
+  await loadAutoPolicy();
   const status = await api("/api/learning/status");
   $("learning-status").textContent = "SFT + QLoRA · GPU 실행 " +
     (status.training_enabled ? "활성화" : "비활성화") +
@@ -390,6 +391,12 @@ async function loadLearning() {
     const link = document.createElement("a"); link.textContent = "데이터 카드 내보내기";
     link.href = "/api/learning/datasets/" + dataset.id + "/card"; link.download = "dataset-card.md";
     card.append(title, stats, link, reviews);
+    if (dataset.state === "reviewed" && !dataset.approval_hash) {
+      card.append(actionButton("자동 허용 정책으로 ChatGPT 심사", async () => {
+        const result = await api("/api/learning/auto-approval/" + dataset.id + "/evaluate", { method: "POST" });
+        notify("ChatGPT 자동 심사: " + result.state); await loadLearning();
+      }));
+    }
     const preview = document.createElement("pre");
     card.append(actionButton("정규화된 전체 선택 샘플 확인", async () => {
       const result = await api("/api/learning/datasets/" + dataset.id + "/samples");
@@ -621,4 +628,46 @@ $("collection-form").addEventListener("submit", async event => {
 $("collection-refresh").addEventListener("click", async () => {
   try { await loadLearning(); }
   catch (error) { notify(error.message); }
+});
+
+
+async function loadAutoPolicy() {
+  const policy = await api("/api/learning/auto-approval");
+  $("auto-policy-status").textContent = "모드 " + (policy.enabled ? "켜짐" : "꺼짐") +
+    " · 모델 " + (policy.model || "미설정") + " · 요청 예산 $" + policy.request_budget_usd +
+    " · UTC 일일 전체 API 예산 $" + policy.daily_budget_usd +
+    " · " + (policy.openai_configured ? "API 설정됨 · 실제 연결 별도 확인" : "API 설정 필요");
+  const options = policy.options;
+  $("auto-policy-enabled").checked = policy.enabled;
+  $("auto-policy-paid").checked = !!options.allow_paid;
+  $("auto-policy-license").checked = !!options.license_reviewed;
+  $("auto-policy-privacy").checked = !!options.privacy_reviewed;
+  $("auto-policy-model").checked = !!options.model_license_reviewed;
+  $("auto-policy-skill").value = options.target_skill || "developer";
+  $("auto-policy-steps").value = options.max_steps || 30;
+  $("auto-policy-length").value = options.max_length || 512;
+  const records = await api("/api/learning/auto-approval/history");
+  $("auto-policy-history").replaceChildren();
+  for (const record of records.slice(0, 20)) {
+    const line = document.createElement("pre");
+    line.textContent = record.dataset_id + " · " + record.state + " · " +
+      new Date(record.created_at * 1000).toLocaleString() + "\n" +
+      JSON.stringify(record.detail, null, 2);
+    $("auto-policy-history").append(line);
+  }
+}
+$("auto-policy-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = event.submitter; button.disabled = true;
+  try {
+    await api("/api/learning/auto-approval", { method: "PUT", body: JSON.stringify({
+      enabled: $("auto-policy-enabled").checked, allow_paid: $("auto-policy-paid").checked,
+      license_reviewed: $("auto-policy-license").checked, privacy_reviewed: $("auto-policy-privacy").checked,
+      model_license_reviewed: $("auto-policy-model").checked,
+      target_skill: $("auto-policy-skill").value, max_steps: Number($("auto-policy-steps").value),
+      max_length: Number($("auto-policy-length").value)
+    }) });
+    notify("자동 허용 정책을 저장했습니다."); await loadLearning();
+  } catch (error) { notify(error.message); }
+  finally { button.disabled = false; }
 });

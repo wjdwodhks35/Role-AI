@@ -16,7 +16,7 @@ from role_ai.config import Settings
 from role_ai.database import Base, build_database
 from role_ai.huggingface import HuggingFaceClient
 from role_ai.learning import Decision, HFInput, LICENSES, review_prompt
-from role_ai.models import CollectionPlan, DatasetSnapshot, User
+from role_ai.models import AutoApprovalPolicy, CollectionPlan, DatasetSnapshot, User
 from role_ai.providers import OllamaProvider, ProviderManager
 
 
@@ -216,7 +216,17 @@ async def collect(settings, factory, providers, hf, uid, topic):
             db.commit()
         if decision.verdict == "reject":
             break
-    return {"state": "collected", "dataset_id": sid, "data_hash": data_hash,
+    automatic = {"state": "manual_mode"}
+    with factory() as db:
+        policy = db.get(AutoApprovalPolicy, uid)
+        enabled = bool(policy and policy.enabled)
+    if enabled and all(reviews.get(stage, {}).get("verdict") == "pass" for stage in ["teacher", "reviewer"]):
+        from role_ai.auto_approval import auto_approve
+        try:
+            automatic = await auto_approve(settings, factory, providers, uid, sid)
+        except Exception:
+            automatic = {"state": "failed", "reason": "자동 승인 조건 또는 설정을 확인하세요."}
+    return {"state": "collected", "dataset_id": sid, "auto_approval": automatic, "data_hash": data_hash,
             "reviews": {stage: value["verdict"] for stage, value in reviews.items()},
             "scope": "three training samples", "training": "not_started"}
 
@@ -283,7 +293,8 @@ def main():
     settings = Settings()
     engine, factory = build_database(settings.database_url)
     Base.metadata.create_all(engine)
-    providers = ProviderManager(settings)
+    from role_ai.billing import BillingLedger
+    providers = ProviderManager(settings, ledger=BillingLedger(settings, factory))
     hf = HuggingFaceClient(settings)
     try:
         while True:

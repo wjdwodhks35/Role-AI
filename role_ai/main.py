@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
 from role_ai.assistant import AssistantContext, AssistantManager, memory_prompt
+from role_ai.auto_approval import policy_router
 from role_ai.billing import BillingLedger
 from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.collection import collection_router
@@ -125,6 +126,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         async with lock:
             yield
 
+    app.include_router(policy_router(authenticated, repository, settings, providers, factory))
     app.include_router(collection_router(authenticated, repository, settings))
     app.include_router(documents_router(authenticated, repository, semantic))
     app.include_router(memory_router(authenticated, repository, providers))
