@@ -51,7 +51,7 @@ function setBusy(value) {
   }
   for (const button of $("conversation-list").querySelectorAll("button")) button.disabled = value;
   if (!value) $("provider").disabled = $("engine").value === "openclaw";
-  $("work-state").textContent = value ? "답변 생성 중…" : "준비됨 · 도구 실행 비활성화";
+  $("work-state").textContent = value ? "답변 생성 중…" : "준비됨 · 참고 문서 " + selectedDocuments.size + "개 · 도구 실행 비활성화";
 }
 
 function emptyState() {
@@ -514,6 +514,7 @@ async function loadDocuments() {
       }
       if (check.checked) selectedDocuments.add(record.id);
       else selectedDocuments.delete(record.id);
+      if (!busy) $("work-state").textContent = "준비됨 · 참고 문서 " + selectedDocuments.size + "개";
     });
     label.append(check, document.createTextNode(record.filename + " · " +
       (record.project || "공통") + " · " + record.characters + "자"));

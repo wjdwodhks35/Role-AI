@@ -116,6 +116,12 @@ def test_document_chat_blocks_paid_gateway_and_wrong_project(signed_in):
     path = f"/api/conversations/{cid}/chat"
     assert signed_in.post(path, json={
         "content": "리눅스", "document_ids": [did]}).status_code == 404
+    # An owner otherwise allowed to use paid APIs must still be blocked for document chat.
+    uid = signed_in.get("/api/auth/me").json()["user"]["id"]
+    with signed_in.app.state.database_factory() as db:
+        from role_ai.models import User
+        db.get(User, uid).is_owner = True
+        db.commit()
     for extra in [{"provider": "openai", "allow_paid": True}, {"engine": "openclaw"},
                   {"provider": "vllm"}]:
         assert signed_in.post(path, json={

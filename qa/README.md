@@ -9,3 +9,7 @@
 보고서: `qa/reports/Role-AI_unit_tests_results.xlsx`. 검증한 코드 커밋과 실제 실행 링크는 보고서 요약 및 `qa/reports/results.json`에 명시했습니다. 72개 시나리오/98개 실행이 엑셀 순서대로 통과했습니다. 최초 실행의 기억 수정 중복 결함은 `qa/defects.json`과 `qa/reports/initial-results.json`에 남겼습니다. 동시 쓰기는 예방적으로 직렬화했습니다. CI의 매 실행별 최신 보고서는 `requirements-unit-test-results` 아티팩트에서 받을 수 있습니다.
 
 실환경 API/GPU 검증, 의미 기반 검색·문서 RAG·회의 처리·Windows 앱 등 미구현 기능은 이 통과 결과에 포함하지 않습니다. 테스트 의존성에서 사용 중단 예정 경고 1건이 발생했으며 실패는 없습니다.
+
+## 문서 기능 검증 확장
+
+문서 보관·프로젝트 격리·로컬 문서 대화 등 12개 시나리오를 추가해 계획은 84개가 되었습니다. 이전 `qa/reports/` 결과는 해당 파일의 커밋/실행 날짜에 대한 기록입니다. 최신 CI 실행의 `requirements-unit-test-results` 아티팩트가 최신 전체 결과입니다.
