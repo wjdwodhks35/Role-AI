@@ -16,6 +16,7 @@ from role_ai.billing import BillingLedger
 from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
+from role_ai.documents import DocumentRepository, documents_router
 from role_ai.learning import learning_router
 from role_ai.memory import MemoryRepository, memory_router
 from role_ai.providers import ProviderManager, ProviderUnavailable
@@ -120,6 +121,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         async with lock:
             yield
 
+    app.include_router(documents_router(authenticated, repository))
     app.include_router(memory_router(authenticated, repository, providers))
     app.include_router(learning_router(authenticated, repository, settings, providers, ledger, hf_transport))
 
@@ -294,7 +296,8 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         items = repo.messages(actor[0].id, conversation_id)
         if items is None:
             raise HTTPException(404, "대화를 찾을 수 없습니다.")
-        return [message_dict(item) for item in items]
+        references = repo.retrievals(items)
+        return [{**message_dict(item), "sources": references.get(item.id, [])} for item in items]
 
     @app.post("/api/conversations/{conversation_id}/chat")
     async def chat(
@@ -317,6 +320,13 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
                 raise HTTPException(403, "OpenAI는 소유자 전용입니다.")
             if not body.allow_paid:
                 raise HTTPException(403, "이 요청의 유료 API 사용에 동의해야 합니다.")
+        if body.document_ids and (
+            body.engine != "provider_fallback"
+            or (body.provider or settings.default_provider) not in {"ollama", "mock"}
+        ):
+            raise HTTPException(403, "문서 대화는 Ollama 또는 테스트 Mock만 지원합니다.")
+        document_context, sources = DocumentRepository(repo.db).context(
+            user.id, body.content, body.project, body.document_ids)
         revision = conversation.revision
         history = [{"role": m.role, "content": m.content}
                    for m in repo.messages(user.id, conversation_id)]
@@ -326,14 +336,15 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         try:
             result = await assistant.reply(
                 body.engine,
-                AssistantContext(user.id, conversation_id, user.is_owner, body.allow_paid, memory_context),
+                AssistantContext(user.id, conversation_id, user.is_owner, body.allow_paid,
+                                 memory_context, document_context),
                 history + [{"role": "user", "content": body.content}],
                 body.provider or settings.default_provider, body.skill,
             )
         except ProviderUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
         try:
-            repo.append_turn(user.id, conversation_id, revision, body.content, result, body.skill)
+            repo.append_turn(user.id, conversation_id, revision, body.content, result, body.skill, sources)
         except ConcurrentTurn:
             raise HTTPException(409, "동시에 다른 메시지가 저장됐습니다. 다시 시도해 주세요.") from None
         return {
@@ -341,6 +352,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             "skill": body.skill, "simulated": result.simulated,
             "usage": {"input_tokens": result.input_tokens, "output_tokens": result.output_tokens},
             "assistant_engine": body.engine, "tools": [],
+            "retrieval": {"mode": "keyword", "sources": sources, "answer_verified": False},
             "billing": {"calculated_usd": result.cost_usd, "state": result.billing_state},
         }
 

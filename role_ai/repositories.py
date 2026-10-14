@@ -1,9 +1,10 @@
+import json
 import time
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
-from role_ai.models import AuthSession, Conversation, Message, User
+from role_ai.models import AuthSession, Conversation, Message, MessageRetrieval, User
 
 
 class ConcurrentTurn(Exception):
@@ -71,7 +72,7 @@ class Repository:
             .order_by(Message.sequence).limit(1000)
         ))
 
-    def append_turn(self, user_id, conversation_id, revision, content, reply, skill):
+    def append_turn(self, user_id, conversation_id, revision, content, reply, skill, sources=None):
         result = self.db.execute(
             update(Conversation).where(
                 Conversation.id == conversation_id,
@@ -82,11 +83,26 @@ class Repository:
         if result.rowcount != 1:
             self.db.rollback()
             raise ConcurrentTurn
+        assistant_message = Message(conversation_id=conversation_id, role="assistant",
+                                    content=reply.text, sequence=revision * 2 + 1,
+                                    provider=reply.provider, model=reply.model, skill=skill)
         self.db.add_all([
             Message(conversation_id=conversation_id, role="user", content=content,
                     sequence=revision * 2, skill=skill),
-            Message(conversation_id=conversation_id, role="assistant", content=reply.text,
-                    sequence=revision * 2 + 1, provider=reply.provider, model=reply.model,
-                    skill=skill),
+            assistant_message,
         ])
+        if sources:
+            self.db.flush()
+            self.db.add(MessageRetrieval(
+                message_id=assistant_message.id,
+                sources=json.dumps([{k: v for k, v in source.items() if k != "text"}
+                                    for source in sources], ensure_ascii=False),
+            ))
         self.db.commit()
+
+    def retrievals(self, messages):
+        if not messages:
+            return {}
+        records = self.db.scalars(select(MessageRetrieval).where(
+            MessageRetrieval.message_id.in_([m.id for m in messages])))
+        return {record.message_id: json.loads(record.sources) for record in records}
