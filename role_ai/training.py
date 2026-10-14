@@ -126,7 +126,8 @@ def _run_sft(plan, train, evaluation, output):
             with torch.inference_mode():
                 generated = trainer.model.generate(
                     tokens, attention_mask=torch.ones_like(tokens),
-                    do_sample=False, max_new_tokens=128, pad_token_id=tokenizer.pad_token_id)
+                    do_sample=False, num_beams=1, return_dict_in_generate=False,
+                    max_new_tokens=128, pad_token_id=tokenizer.pad_token_id)
             responses.append(tokenizer.decode(generated[0, tokens.shape[-1]:], skip_special_tokens=True))
         return benchmark_result(benchmark["cases"], responses)
     baseline_tasks = task_evaluate()

@@ -31,3 +31,5 @@ Worker heartbeat나 실제 진행률은 아직 제공하지 않으며 저장된 
 
 새 환경변수나 유료 서비스는 필수가 아닙니다.
 실제 Ollama 검수 품질과 GPU 학습/생성은 서버·모델이 준비된 뒤 별도로 검증해야 합니다.
+
+생성 API 참고: [Hugging Face Transformers 생성 API](https://huggingface.co/docs/transformers/v4.56.2/en/main_classes/text_generation).
