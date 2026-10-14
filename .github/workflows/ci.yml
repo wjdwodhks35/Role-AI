@@ -18,16 +18,18 @@ jobs:
         with:
           node-version: "22"
       - run: python -m pip install -e ".[test]"
-      - run: ruff check role_ai tests
+      - run: ruff check role_ai tests qa
       - run: python -m compileall -q role_ai
       - run: node --check role_ai/static/app.js
       - run: python -m pip install --dry-run ".[training]"
-      - run: pytest -q --junitxml=test-results.xml
+      - run: python qa/run_excel_tests.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pytest-results
-          path: test-results.xml
+          name: requirements-unit-test-results
+          path: |
+            qa/Role-AI_unit_tests.xlsx
+            qa/results/
           if-no-files-found: ignore
   container:
     runs-on: ubuntu-latest

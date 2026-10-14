@@ -5,7 +5,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import or_, select, update
+from sqlalchemy import or_, select, text, update
 
 from role_ai.models import Conversation, Memory, MemoryHistory, Message
 from role_ai.providers import ProviderUnavailable
@@ -55,17 +55,29 @@ class MemoryRepository:
     def __init__(self, db):
         self.db = db
 
+    def begin_write(self):
+        # Release the authentication read transaction before acquiring the SQLite writer lock.
+        # All memory create/edit paths serialize deduplication and mutation together.
+        self.db.rollback()
+        self.db.execute(text("BEGIN IMMEDIATE"))
+
+    def duplicate(self, uid, body, excluding=None):
+        query = select(Memory).where(
+            Memory.user_id == uid, Memory.kind == body.kind, Memory.project == body.project,
+            Memory.content == body.content, Memory.state.in_(["candidate", "confirmed"]),
+            or_(Memory.expires_at.is_(None), Memory.expires_at > time.time()),
+        )
+        if excluding:
+            query = query.where(Memory.id != excluding)
+        return self.db.scalar(query)
+
     def get(self, uid, mid):
         return self.db.scalar(select(Memory).where(Memory.id == mid, Memory.user_id == uid))
 
     def create(self, uid, body, candidate=False):
         if body.source_message_id and not owned_message(self.db, uid, body.source_message_id):
             raise HTTPException(404, "사용자 원문 메시지를 찾을 수 없습니다.")
-        existing = self.db.scalar(select(Memory).where(
-            Memory.user_id == uid, Memory.kind == body.kind, Memory.project == body.project,
-            Memory.content == body.content, Memory.state.in_(["candidate", "confirmed"]),
-            or_(Memory.expires_at.is_(None), Memory.expires_at > time.time()),
-        ))
+        existing = self.duplicate(uid, body)
         if existing:
             return existing
         memory = Memory(user_id=uid, **body.model_dump(),
@@ -122,7 +134,10 @@ def memory_router(authenticated, repository, providers):
 
     @router.post("", status_code=201)
     def create(body: MemoryInput, actor=Depends(authenticated), repo=Depends(repository)):
-        record = MemoryRepository(repo.db).create(actor[0].id, body)
+        uid = actor[0].id
+        memories = MemoryRepository(repo.db)
+        memories.begin_write()
+        record = memories.create(uid, body)
         repo.db.commit()
         return memory_dict(record)
 
@@ -146,7 +161,8 @@ def memory_router(authenticated, repository, providers):
 
     @router.post("/extract", status_code=201)
     async def extract(body: ExtractInput, actor=Depends(authenticated), repo=Depends(repository)):
-        source = owned_message(repo.db, actor[0].id, body.source_message_id)
+        uid = actor[0].id
+        source = owned_message(repo.db, uid, body.source_message_id)
         if not source:
             raise HTTPException(404, "사용자 원문 메시지를 찾을 수 없습니다.")
         text = source.content
@@ -164,24 +180,31 @@ def memory_router(authenticated, repository, providers):
         except (ProviderUnavailable, ValueError):
             raise HTTPException(503, "기억 후보 추출에 실패했습니다. 자동 저장하지 않았습니다.") from None
         result = []
+        memories = MemoryRepository(repo.db)
+        memories.begin_write()
         for item in candidates.memories:
             # Ignore model-proposed provenance/expiry; only the verified user message is evidence.
             item.source_message_id = body.source_message_id
             item.expires_at = None
-            result.append(MemoryRepository(repo.db).create(actor[0].id, item, candidate=True))
+            result.append(memories.create(uid, item, candidate=True))
         repo.db.commit()
         return [memory_dict(m) for m in result]
 
     @router.patch("/{memory_id}")
     def edit(memory_id: str, body: MemoryEdit, actor=Depends(authenticated), repo=Depends(repository)):
-        memory = require(repo, actor[0].id, memory_id)
+        uid = actor[0].id
+        memories = MemoryRepository(repo.db)
+        memories.begin_write()
+        memory = require(repo, uid, memory_id)
         if body.revision != memory.revision:
             raise HTTPException(409, "기억이 변경됐습니다. 다시 조회하세요.")
-        if body.source_message_id and not owned_message(repo.db, actor[0].id, body.source_message_id):
+        if body.source_message_id and not owned_message(repo.db, uid, body.source_message_id):
             raise HTTPException(404, "사용자 원문을 찾을 수 없습니다.")
+        if memories.duplicate(uid, body, excluding=memory_id):
+            raise HTTPException(409, "동일한 활성 기억이 이미 있습니다.")
         previous_content = memory.content
         result = repo.db.execute(update(Memory).where(
-            Memory.id == memory.id, Memory.user_id == actor[0].id,
+            Memory.id == memory.id, Memory.user_id == uid,
             Memory.revision == body.revision
         ).values(**body.model_dump(exclude={"revision"}), revision=body.revision + 1,
                  state="confirmed").execution_options(synchronize_session=False))
