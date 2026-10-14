@@ -22,7 +22,10 @@
 | OpenClaw HTTP 대화 / 연결 테스트 | 로컬 소유자 전용 구현, 실제 PC 연결 미검증 |
 | Permission Gate | 전체 실행 거부 인터페이스만 구현, 승인 UI/실행기 미구현 |
 | Docker Compose / 자동 테스트 / CI | 구성, 실행 결과는 PR 및 Actions 확인 |
-| RAG / 파일 업로드 / Worker / 회의 / PC 제어 / 학습 | 후속 단계 |
+| 장기 기억 | SQLite 후보/확인, 출처·수정·삭제·만료, 키워드 검색, 채팅 반영 |
+| 학습 데이터 | 제한된 샘플 가져오기, 압축 JSONL·카드, 3단계 검수·승인 |
+| 학습 Worker | opt-in offline SFT/QLoRA 코드·큐·loss 비교, 실제 GPU 실행 미검증 |
+| 임베딩 RAG / 일반 문서 업로드 / 회의 / PC 제어 / DPO·GRPO | 후속 단계 |
 
 기본 대화 엔진은 ProviderAssistant이며, 설정한 로컬 소유자는 OpenClaw로 전환할 수 있습니다.
 설정만으로 연결 성공을 표시하지 않습니다. [로컬 OpenClaw 안내](docs/openclaw-local.md)를 참조하세요.
@@ -75,7 +78,8 @@ Mock은 입력을 되돌려 주는 테스트 응답입니다. 실제 AI 서비�
     docker compose logs -f api
 
 FastAPI만 실행합니다. SQLite는 named volume에 저장됩니다.
-Worker/DB 서버/OpenClaw/Ollama 컨테이너는 아직 포함하지 않습니다.
+DB 서버/OpenClaw/Ollama/학습 Worker 컨테이너는 포함하지 않습니다.
+학습 Worker는 승인 후 WSL2의 기존 GPU 환경에서 별도로 실행합니다.
 Ollama는 기존 호스트 환경을 사용하며 Compose에서는
 http://host.docker.internal:11434로 연결합니다.
 호스트 Ollama가 해당 네트워크에서 접근 가능한지 별도 확인하고, 공용 인터넷에 노출하지 마세요.
@@ -146,3 +150,4 @@ main은 검증된 릴리스만 반영합니다. 후속 기능은 독립적인 fe
 
 다음 계획은 [docs/architecture.md](docs/architecture.md) 및
 [docs/roadmap.md](docs/roadmap.md)를 참조하세요.
+\n## 기억과 학습 관리\n\n채팅 화면의 기억 관리·학습 데이터 버튼을 사용합니다. 학습 관리는 로컬 소유자 전용입니다.\n[기억·학습 실행 안내](docs/memory-learning.md)에 파일 구조, 제한, 검수·승인, Worker 설정과 미검증 범위를 정리했습니다.\n개인 기억을 자동으로 학습에 사용하거나 전체 Hugging Face 데이터셋을 다운로드하지 않습니다.\n

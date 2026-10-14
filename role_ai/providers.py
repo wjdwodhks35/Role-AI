@@ -42,6 +42,14 @@ class OllamaProvider:
         )
 
     async def complete(self, messages):
+        from role_ai.artifacts import storage_lock
+        try:
+            with storage_lock(self.settings.storage_dir):
+                return await self._complete(messages)
+        except ValueError:
+            raise ProviderUnavailable("로컬 GPU 또는 데이터 작업이 진행 중입니다. 완료 후 다시 시도하세요.") from None
+
+    async def _complete(self, messages):
         try:
             async with self.client() as client:
                 response = await client.post("api/chat", json={

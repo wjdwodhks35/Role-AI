@@ -21,6 +21,7 @@ jobs:
       - run: ruff check role_ai tests
       - run: python -m compileall -q role_ai
       - run: node --check role_ai/static/app.js
+      - run: python -m pip install --dry-run ".[training]"
       - run: pytest -q --junitxml=test-results.xml
       - uses: actions/upload-artifact@v4
         if: always()

@@ -15,6 +15,15 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_ttl_seconds: int = Field(default=86400, ge=300, le=604800)
     registration_enabled: bool = False
+    storage_dir: str = "./data/artifacts"
+    artifact_quota_bytes: int = Field(default=104857600, ge=1048576, le=1073741824)
+    hf_download_enabled: bool = False
+    hf_max_scan_bytes: int = Field(default=2097152, ge=1024, le=10485760)
+    hf_token: SecretStr = SecretStr("")
+    training_enabled: bool = False
+    training_base_model_path: str = ""
+    training_base_model_revision: str = ""
+
     bootstrap_email: str = ""
     bootstrap_password: SecretStr = SecretStr("")
     default_provider: Literal["ollama", "vllm", "openai", "mock"] = "ollama"

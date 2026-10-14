@@ -3,6 +3,7 @@ const $ = (id) => document.getElementById(id);
 let csrf = "", activeConversation = null, busy = false;
 let noticeTimer;
 let paidQuoteKey = null;
+let editingMemory = null, reviewingDataset = null;
 
 function resetPaidQuote() {
   paidQuoteKey = null;
@@ -35,6 +36,7 @@ function showAuth() {
   csrf = ""; activeConversation = null;
   resetPaidQuote();
   $("usage-history").replaceChildren();
+  $("memory-dialog").close(); $("learning-dialog").close();
   $("workspace").hidden = true; $("auth-view").hidden = false;
   $("messages").replaceChildren(); $("conversation-list").replaceChildren();
 }
@@ -65,7 +67,21 @@ function addMessage(message) {
   meta.textContent = message.role === "user" ? "나" :
     ["Role-AI", message.provider, message.model, message.skill].filter(Boolean).join(" · ");
   const text = document.createElement("div"); text.textContent = message.content;
-  element.append(meta, text); $("messages").append(element);
+  element.append(meta, text);
+  if (message.role === "user" && message.id) {
+    const remember = document.createElement("button"); remember.textContent = "기억 후보 추출";
+    remember.addEventListener("click", async () => {
+      remember.disabled = true;
+      try {
+        await api("/api/memories/extract", { method: "POST",
+          body: JSON.stringify({ source_message_id: message.id }) });
+        await loadMemories(); $("memory-dialog").showModal();
+      } catch (error) { notify(error.message); }
+      finally { remember.disabled = false; }
+    });
+    element.append(remember);
+  }
+  $("messages").append(element);
 }
 
 async function loadConversations() {
@@ -99,6 +115,7 @@ async function enterWorkspace(data) {
   csrf = data.csrf_token; $("account").textContent = data.user.email;
   $("auth-view").hidden = true; $("workspace").hidden = false;
   const status = await api("/api/status");
+  $("learning-open").hidden = !status.learning_available;
   $("paid-status").textContent = status.paid_api_calls === "opt_in" ? "요청별 동의 필요" : "비활성화";
   $("usage-button").hidden = status.paid_api_calls !== "opt_in";
   resetPaidQuote();
@@ -165,6 +182,7 @@ $("engine").addEventListener("change", () => {
   updateProviderState();
 });
 $("message").addEventListener("input", resetPaidQuote);
+$("project").addEventListener("input", resetPaidQuote);
 $("skill").addEventListener("change", () => {
   resetPaidQuote();
   $("engine-badge").textContent = $("skill").selectedOptions[0].textContent;
@@ -199,10 +217,10 @@ $("chat-form").addEventListener("submit", async (event) => {
       method: "POST", body: JSON.stringify({ title: content.slice(0, 60) })
     });
     const isPaid = $("engine").value === "provider_fallback" && $("provider").value === "openai";
-    const quoteKey = JSON.stringify([activeConversation.id, content, $("skill").value]);
+    const quoteKey = JSON.stringify([activeConversation.id, content, $("skill").value, $("project").value]);
     if (isPaid && paidQuoteKey !== quoteKey) {
       const quote = await api("/api/conversations/" + activeConversation.id + "/quote", {
-        method: "POST", body: JSON.stringify({ content, provider: "openai", skill: $("skill").value })
+        method: "POST", body: JSON.stringify({ content, project: $("project").value, provider: "openai", skill: $("skill").value })
       });
       $("paid-approval").hidden = false;
       $("paid-consent").checked = false;
@@ -224,7 +242,7 @@ $("chat-form").addEventListener("submit", async (event) => {
     }
     const result = await api("/api/conversations/" + activeConversation.id + "/chat", {
       method: "POST", body: JSON.stringify({
-        content, allow_paid: isPaid && $("paid-consent").checked, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
+        content, project: $("project").value, allow_paid: isPaid && $("paid-consent").checked, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
       })
     });
     $("message").value = ""; await openConversation(activeConversation);
@@ -262,3 +280,199 @@ async function start() {
   } catch (error) { notify("서버에 연결하지 못했습니다. " + error.message); }
 }
 start();
+
+
+function actionButton(label, handler) {
+  const button = document.createElement("button"); button.textContent = label;
+  button.type = "button";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try { await handler(); } catch (error) { notify(error.message); }
+    finally { button.disabled = false; }
+  });
+  return button;
+}
+function clearMemoryForm() {
+  editingMemory = null; $("memory-content").value = ""; $("memory-project").value = "";
+}
+async function loadMemories() {
+  const records = await api("/api/memories"); $("memory-list").replaceChildren();
+  for (const record of records) {
+    const card = document.createElement("article"); card.className = "management-card";
+    const title = document.createElement("strong");
+    title.textContent = record.kind + " · " + (record.project || "공통") + " · " + record.state;
+    const text = document.createElement("p"); text.textContent = record.content;
+    const source = document.createElement("small");
+    source.textContent = "출처: " + (record.source_message_id || "사용자 직접 등록") +
+      (record.expires_at ? " · 만료 " + new Date(record.expires_at * 1000).toLocaleString() : "");
+    card.append(title, text, source);
+    if (record.state === "candidate") card.append(actionButton("기억 확인", async () => {
+      await api("/api/memories/" + record.id + "/confirm", { method: "POST" }); await loadMemories();
+    }));
+    card.append(actionButton("수정", async () => {
+      editingMemory = record; $("memory-content").value = record.content;
+      $("memory-kind").value = record.kind; $("memory-project").value = record.project;
+    }), actionButton("삭제", async () => {
+      await api("/api/memories/" + record.id, { method: "DELETE" });
+      if (editingMemory?.id === record.id) clearMemoryForm();
+      await loadMemories();
+    }));
+    $("memory-list").append(card);
+  }
+}
+$("memory-open").addEventListener("click", async () => {
+  try { await loadMemories(); $("memory-dialog").showModal(); }
+  catch (error) { notify(error.message); }
+});
+$("memory-close").addEventListener("click", () => $("memory-dialog").close());
+$("memory-clear").addEventListener("click", clearMemoryForm);
+$("memory-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const body = { content: $("memory-content").value, kind: $("memory-kind").value,
+    project: $("memory-project").value };
+  if (editingMemory) {
+    body.revision = editingMemory.revision;
+    body.source_message_id = editingMemory.source_message_id;
+    body.expires_at = editingMemory.expires_at;
+  }
+  try {
+    await api("/api/memories" + (editingMemory ? "/" + editingMemory.id : ""), {
+      method: editingMemory ? "PATCH" : "POST", body: JSON.stringify(body)
+    });
+    clearMemoryForm(); await loadMemories(); notify("기억을 저장했습니다.");
+  } catch (error) { notify(error.message); }
+});
+$("learning-open").addEventListener("click", async () => {
+  try { await loadLearning(); $("learning-dialog").showModal(); }
+  catch (error) { notify(error.message); }
+});
+$("learning-close").addEventListener("click", () => $("learning-dialog").close());
+async function loadLearning() {
+  const status = await api("/api/learning/status");
+  $("learning-status").textContent = "SFT + QLoRA · GPU 실행 " +
+    (status.training_enabled ? "활성화" : "비활성화") +
+    " · HF 조회 " + (status.hf_download_enabled ? "활성화" : "비활성화") +
+    " · 학습 모델은 자동 활성화되지 않습니다.";
+  const datasets = await api("/api/learning/datasets");
+  $("dataset-list").replaceChildren();
+  for (const dataset of datasets) {
+    const card = document.createElement("article"); card.className = "management-card";
+    const title = document.createElement("strong"); title.textContent = dataset.name + " · " + dataset.state;
+    const stats = document.createElement("p");
+    stats.textContent = "학습 " + dataset.manifest.train_rows + " / 평가 " +
+      dataset.manifest.eval_rows + " / 제외 " + dataset.manifest.excluded_rows +
+      " · 라이선스 " + dataset.manifest.source.license;
+    const reviews = document.createElement("pre"); reviews.textContent = JSON.stringify(dataset.reviews, null, 2);
+    const link = document.createElement("a"); link.textContent = "데이터 카드 내보내기";
+    link.href = "/api/learning/datasets/" + dataset.id + "/card"; link.download = "dataset-card.md";
+    card.append(title, stats, link, reviews);
+    const preview = document.createElement("pre");
+    card.append(actionButton("정규화된 전체 선택 샘플 확인", async () => {
+      const result = await api("/api/learning/datasets/" + dataset.id + "/samples");
+      preview.textContent = JSON.stringify(result, null, 2);
+    }), preview);
+    card.append(actionButton("로컬 Teacher·Reviewer 검수", async () => {
+      for (const stage of ["teacher", "reviewer"]) {
+        await api("/api/learning/datasets/" + dataset.id + "/review", {
+          method: "POST", body: JSON.stringify({ stage })
+        });
+      }
+      await loadLearning();
+    }), actionButton("GPT 검수 비용 확인", async () => {
+      const quote = await api("/api/learning/datasets/" + dataset.id + "/review/quote", { method: "POST" });
+      $("review-quote").textContent = dataset.name + " · 예상 예약 $" + quote.estimated_upper_usd +
+        " / 요청 한도 $" + quote.request_budget_usd + " / 일일 예산 $" + quote.daily_budget_usd +
+        ". 검수는 학습 미리보기 3개를 대상으로 하며 전체 품질 보장이 아닙니다.";
+      $("review-consent").checked = false; $("review-approval").hidden = false;
+      reviewingDataset = quote.within_budget ? dataset.id : null;
+      if (!quote.within_budget) notify("예산이 부족합니다.");
+    }));
+    const checks = ["데이터 라이선스 조건 확인", "개인정보 및 샘플 품질 확인", "기반 모델 이용 조건 확인"];
+    const inputs = [];
+    for (const text of checks) {
+      const label = document.createElement("label"); label.className = "muted";
+      const check = document.createElement("input"); check.type = "checkbox";
+      label.append(check, document.createTextNode(text)); card.append(label, document.createElement("br"));
+      inputs.push(check);
+    }
+    card.append(actionButton("검수 결과 확인 후 학습 승인", async () => {
+      if (!inputs.every(input => input.checked)) throw new Error("세 가지 검토 항목을 확인하세요.");
+      await api("/api/learning/datasets/" + dataset.id + "/approve", {
+        method: "POST", body: JSON.stringify({
+          data_hash: dataset.data_hash, license_reviewed: true, privacy_reviewed: true,
+          model_license_reviewed: true, max_steps: 30, max_length: 512
+        })
+      });
+      await loadLearning();
+    }), actionButton("승인된 GPU 작업 등록", async () => {
+      await api("/api/learning/datasets/" + dataset.id + "/enqueue", { method: "POST" });
+      await loadLearning();
+    }), actionButton("데이터·종료된 작업 기록 삭제", async () => {
+      await api("/api/learning/datasets/" + dataset.id, { method: "DELETE" }); await loadLearning();
+    }));
+    $("dataset-list").append(card);
+  }
+  const jobs = await api("/api/learning/jobs"); $("training-jobs").replaceChildren();
+  for (const job of jobs) {
+    const card = document.createElement("article"); card.className = "management-card";
+    const text = document.createElement("pre"); text.textContent = job.id + " · " + job.state +
+      "\n" + JSON.stringify(job.report, null, 2); card.append(text);
+    if (job.state === "running") card.append(actionButton("Worker 중단 확인 후 상태 복구", async () => {
+      await api("/api/learning/jobs/" + job.id + "/recover", { method: "POST" }); await loadLearning();
+    }));
+    if (job.state === "blocked") card.append(actionButton("자원 확보 후 재시도", async () => {
+      await api("/api/learning/jobs/" + job.id + "/retry", { method: "POST" }); await loadLearning();
+    }));
+    if (["queued", "blocked"].includes(job.state)) card.append(actionButton("작업 취소", async () => {
+      await api("/api/learning/jobs/" + job.id + "/cancel", { method: "POST" }); await loadLearning();
+    }));
+    $("training-jobs").append(card);
+  }
+}
+$("dataset-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const file = $("dataset-file").files[0];
+    if (!file || file.size > 48 * 1024) throw new Error("48KB 이하의 선별된 JSONL 파일을 선택하세요.");
+    const samples = (await file.text()).split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line));
+    if (samples.length < 10 || samples.length > 100) throw new Error("10~100행을 선택하세요.");
+    await api("/api/learning/datasets", { method: "POST", body: JSON.stringify({
+      name: $("dataset-name").value, license: $("dataset-license").value,
+      provenance: $("dataset-provenance").value, samples
+    }) });
+    await loadLearning();
+  } catch (error) { notify(error.message); }
+});
+$("hf-search").addEventListener("click", async () => {
+  $("hf-search").disabled = true;
+  try {
+    const result = await api("/api/learning/huggingface/suggest", { method: "POST",
+      body: JSON.stringify({ task: $("hf-query").value }) });
+    $("hf-results").textContent = JSON.stringify(result, null, 2);
+  } catch (error) { notify(error.message); }
+  finally { $("hf-search").disabled = false; }
+});
+$("hf-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api("/api/learning/huggingface/import", { method: "POST", body: JSON.stringify({
+      name: $("hf-repo").value, repo_id: $("hf-repo").value, revision: $("hf-revision").value,
+      filename: $("hf-file").value, prompt_field: $("hf-prompt").value,
+      completion_field: $("hf-completion").value, rows: 30
+    }) });
+    await loadLearning();
+  } catch (error) { notify(error.message); }
+});
+$("review-send").addEventListener("click", async () => {
+  if (!reviewingDataset || !$("review-consent").checked) {
+    notify("비용 확인 후 이번 검수 호출에 동의하세요."); return;
+  }
+  $("review-send").disabled = true;
+  try {
+    await api("/api/learning/datasets/" + reviewingDataset + "/review", { method: "POST",
+      body: JSON.stringify({ stage: "orchestrator", allow_paid: true }) });
+    reviewingDataset = null; $("review-approval").hidden = true;
+    await loadLearning();
+  } catch (error) { notify(error.message); }
+  finally { $("review-send").disabled = false; $("review-consent").checked = false; }
+});

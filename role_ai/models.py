@@ -65,3 +65,52 @@ class ApiUsage(Base):
     input_tokens: Mapped[int | None]
     output_tokens: Mapped[int | None]
     created_at: Mapped[float] = mapped_column(default=time.time, index=True)
+
+
+class Memory(Base):
+    __tablename__ = "memories"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    project: Mapped[str] = mapped_column(String(80), default="")
+    content: Mapped[str] = mapped_column(Text)
+    source_message_id: Mapped[str | None] = mapped_column(ForeignKey("messages.id"))
+    state: Mapped[str] = mapped_column(String(20), default="candidate", index=True)
+    revision: Mapped[int] = mapped_column(default=1)
+    expires_at: Mapped[float | None]
+    created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class MemoryHistory(Base):
+    __tablename__ = "memory_history"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    memory_id: Mapped[str] = mapped_column(ForeignKey("memories.id", ondelete="CASCADE"), index=True)
+    content: Mapped[str] = mapped_column(Text)
+    revision: Mapped[int]
+    changed_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class DatasetSnapshot(Base):
+    __tablename__ = "dataset_snapshots"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    manifest: Mapped[str] = mapped_column(Text)
+    data_hash: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[int] = mapped_column(default=1)
+    state: Mapped[str] = mapped_column(String(20), default="staged")
+    reviews: Mapped[str] = mapped_column(Text, default="{}")
+    plan: Mapped[str | None] = mapped_column(Text)
+    approval_hash: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class TrainingJob(Base):
+    __tablename__ = "training_jobs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset_snapshots.id"), index=True)
+    approval_hash: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(30), default="queued", index=True)
+    report: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[float] = mapped_column(default=time.time)
