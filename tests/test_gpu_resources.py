@@ -221,4 +221,5 @@ def test_gpu_training_oom_becomes_resource_wait(monkeypatch):
 
 
 # Reuse the existing meaningful learning fixture, not actual GPU/model weights.
-from test_learning import learning_app  # noqa: E402,F401
+from test_learning import learning_app as _shared_learning_app  # noqa: E402
+learning_app = _shared_learning_app
