@@ -10,6 +10,7 @@ class AssistantContext:
     user_id: str
     conversation_id: str
     owner: bool = False
+    allow_paid: bool = False
 
 
 class AssistantEngine(Protocol):
@@ -27,7 +28,12 @@ class ProviderAssistant:
 
     async def reply(self, context, messages, provider, skill):
         prompt = [{"role": "system", "content": system_prompt(skill)}] + messages[-20:]
-        return await self.providers.get(provider).complete(prompt)
+        selected = self.providers.get(provider)
+        if provider == "openai":
+            return await selected.complete_for_user(
+                prompt, context.user_id, context.owner, context.allow_paid
+            )
+        return await selected.complete(prompt)
 
 
 class OpenClawGatewayAdapter:

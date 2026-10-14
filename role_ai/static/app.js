@@ -2,6 +2,13 @@
 const $ = (id) => document.getElementById(id);
 let csrf = "", activeConversation = null, busy = false;
 let noticeTimer;
+let paidQuoteKey = null;
+
+function resetPaidQuote() {
+  paidQuoteKey = null;
+  $("paid-approval").hidden = true;
+  $("paid-consent").checked = false;
+}
 
 function notify(message) {
   $("notice").textContent = message;
@@ -26,6 +33,8 @@ async function api(path, options = {}) {
 
 function showAuth() {
   csrf = ""; activeConversation = null;
+  resetPaidQuote();
+  $("usage-history").replaceChildren();
   $("workspace").hidden = true; $("auth-view").hidden = false;
   $("messages").replaceChildren(); $("conversation-list").replaceChildren();
 }
@@ -77,6 +86,7 @@ async function loadConversations() {
 
 async function openConversation(conversation) {
   const messages = await api("/api/conversations/" + conversation.id + "/messages");
+  resetPaidQuote();
   activeConversation = conversation; $("chat-title").textContent = conversation.title;
   $("messages").replaceChildren();
   if (!messages.length) emptyState();
@@ -89,6 +99,9 @@ async function enterWorkspace(data) {
   csrf = data.csrf_token; $("account").textContent = data.user.email;
   $("auth-view").hidden = true; $("workspace").hidden = false;
   const status = await api("/api/status");
+  $("paid-status").textContent = status.paid_api_calls === "opt_in" ? "요청별 동의 필요" : "비활성화";
+  $("usage-button").hidden = status.paid_api_calls !== "opt_in";
+  resetPaidQuote();
   $("engine").value = "provider_fallback";
   $("provider").disabled = false;
   $("current-engine").textContent = "기본 비서";
@@ -116,8 +129,13 @@ async function enterWorkspace(data) {
 }
 
 function updateProviderState() {
+  resetPaidQuote();
   if ($("engine").value === "openclaw") {
     $("connection-state").textContent = "OpenClaw 연결 미확인 · Gateway의 로컬 모델 사용";
+    return;
+  }
+  if ($("provider").value === "openai") {
+    $("connection-state").textContent = "유료 API · 보내기 전에 비용 확인과 동의가 필요합니다.";
     return;
   }
   $("connection-state").textContent = $("provider").value === "mock"
@@ -146,11 +164,14 @@ $("engine").addEventListener("change", () => {
   $("current-engine").textContent = $("engine").value === "openclaw" ? "OpenClaw" : "기본 비서";
   updateProviderState();
 });
+$("message").addEventListener("input", resetPaidQuote);
 $("skill").addEventListener("change", () => {
+  resetPaidQuote();
   $("engine-badge").textContent = $("skill").selectedOptions[0].textContent;
 });
 $("new-chat").addEventListener("click", () => {
   if (busy) return;
+  resetPaidQuote();
   activeConversation = null; $("chat-title").textContent = "새로운 대화";
   emptyState(); loadConversations().catch((e) => notify(e.message));
 });
@@ -177,9 +198,33 @@ $("chat-form").addEventListener("submit", async (event) => {
     if (!activeConversation) activeConversation = await api("/api/conversations", {
       method: "POST", body: JSON.stringify({ title: content.slice(0, 60) })
     });
+    const isPaid = $("engine").value === "provider_fallback" && $("provider").value === "openai";
+    const quoteKey = JSON.stringify([activeConversation.id, content, $("skill").value]);
+    if (isPaid && paidQuoteKey !== quoteKey) {
+      const quote = await api("/api/conversations/" + activeConversation.id + "/quote", {
+        method: "POST", body: JSON.stringify({ content, provider: "openai", skill: $("skill").value })
+      });
+      $("paid-approval").hidden = false;
+      $("paid-consent").checked = false;
+      $("paid-quote").textContent = "예상 예약 비용 $" + quote.estimated_upper_usd +
+        " / 요청 한도 $" + quote.request_budget_usd + " / UTC 일일 예산 $" + quote.daily_budget_usd +
+        " / 사용·예약 $" + quote.used_or_reserved_usd +
+        ". 실제 청구 금액을 보장하는 견적은 아닙니다.";
+      if (quote.within_budget) {
+        paidQuoteKey = quoteKey;
+        notify("비용과 외부 전송을 확인하고 동의한 뒤 다시 보내세요.");
+      } else {
+        notify("설정한 예산이 부족하여 호출할 수 없습니다.");
+      }
+      return;
+    }
+    if (isPaid && !$("paid-consent").checked) {
+      notify("이번 유료 API 호출에 동의해 주세요.");
+      return;
+    }
     const result = await api("/api/conversations/" + activeConversation.id + "/chat", {
       method: "POST", body: JSON.stringify({
-        content, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
+        content, allow_paid: isPaid && $("paid-consent").checked, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
       })
     });
     $("message").value = ""; await openConversation(activeConversation);
@@ -188,6 +233,24 @@ $("chat-form").addEventListener("submit", async (event) => {
       ? "테스트 응답입니다. 실제 AI 연결 아님." : "응답 수신 · " + result.model;
   } catch (error) { notify(error.message); }
   finally { setBusy(false); }
+});
+$("usage-button").addEventListener("click", async () => {
+  try {
+    const result = await api("/api/usage");
+    $("usage-history").replaceChildren();
+    const heading = document.createElement("p");
+    heading.textContent = "설정 단가로 계산한 USD 기록 · 실제 청구서 아님";
+    $("usage-history").append(heading);
+    for (const record of result.records.slice(0, 10)) {
+      const line = document.createElement("p");
+      line.textContent = record.model + " · " + record.state + " · $" + record.calculated_usd;
+      $("usage-history").append(line);
+    }
+    if (!result.records.length) {
+      const line = document.createElement("p"); line.textContent = "사용 기록이 없습니다.";
+      $("usage-history").append(line);
+    }
+  } catch (error) { notify(error.message); }
 });
 async function start() {
   try {

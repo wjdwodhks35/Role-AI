@@ -16,7 +16,9 @@
 | Mock Provider | 명시적 로컬 테스트 모드만 허용, 화면에 테스트 표시 |
 | Professor / Developer / Doctor / Counselor | 공유 모델의 System Prompt 기반 선택형 Skill |
 | ModelProvider / AssistantEngine / OpenClaw 어댑터 인터페이스 | 구현 |
-| OpenAI / vLLM 실제 연결 | 미구현, API 키를 설정해도 호출하지 않음 |
+| OpenAI Responses API | 소유자용 구현, 기본 비활성화, 실제 키 호출 미검증 |
+| OpenAI 비용 정책 / 사용량 / 호출 동의 | 서버 단가·예산 설정, DB 예약/정산, 화면 구현 |
+| vLLM 직접 Provider | 미구현 |
 | OpenClaw HTTP 대화 / 연결 테스트 | 로컬 소유자 전용 구현, 실제 PC 연결 미검증 |
 | Permission Gate | 전체 실행 거부 인터페이스만 구현, 승인 UI/실행기 미구현 |
 | Docker Compose / 자동 테스트 / CI | 구성, 실행 결과는 PR 및 Actions 확인 |
@@ -24,9 +26,9 @@
 
 기본 대화 엔진은 ProviderAssistant이며, 설정한 로컬 소유자는 OpenClaw로 전환할 수 있습니다.
 설정만으로 연결 성공을 표시하지 않습니다. [로컬 OpenClaw 안내](docs/openclaw-local.md)를 참조하세요.
-자동 모델 라우팅, 스트리밍, 비용 한도, 암호화된 사용자별 API 키 등록,
-자동 재시도 및 Provider 장애 대체는 후속 구현입니다.
-Mock으로 자동 대체하지 않으며 유료 API를 호출하지 않습니다.
+자동 모델 라우팅, 스트리밍, 사용자별 API 키 등록과 Provider 장애 대체는 후속 구현입니다.
+OpenAI는 소유자가 서버 키·단가·예산을 설정하고 요청별 동의한 경우에만 호출합니다.
+Mock 또는 유료 API로 자동 대체하지 않습니다. [OpenAI 설정 안내](docs/openai-provider.md)를 참조하세요.
 
 ## 로컬 실행 (WSL2 / Python 3.11 이상)
 

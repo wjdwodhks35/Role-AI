@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
 from role_ai.assistant import AssistantContext, AssistantManager
+from role_ai.billing import BillingLedger
 from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
@@ -19,7 +20,7 @@ from role_ai.providers import ProviderManager, ProviderUnavailable
 from role_ai.repositories import ConcurrentTurn, Repository
 from role_ai.schemas import ChatRequest, ConversationCreate, Credentials, ProviderName
 from role_ai.security import RateLimiter, hash_password, token_hash, verify_password
-from role_ai.skills import SKILLS
+from role_ai.skills import SKILLS, system_prompt
 
 COOKIE = "role_ai_session"
 STATIC = Path(__file__).parent / "static"
@@ -37,10 +38,11 @@ def message_dict(item):
     }
 
 
-def create_app(settings: Settings | None = None, providers=None, gateway_transport=None):
+def create_app(settings: Settings | None = None, providers=None, gateway_transport=None, openai_transport=None):
     settings = settings or Settings()
     engine, factory = build_database(settings.database_url)
-    providers = providers or ProviderManager(settings)
+    ledger = BillingLedger(settings, factory)
+    providers = providers or ProviderManager(settings, ledger=ledger, openai_transport=openai_transport)
     assistant = AssistantManager(settings, providers, gateway_transport)
     turn_locks = [asyncio.Lock() for _ in range(32)]
     auth_limiter = RateLimiter(maximum=10)
@@ -68,6 +70,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     app.state.settings = settings
     app.state.database_factory = factory
     app.state.providers = providers
+    app.state.billing = ledger
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -195,22 +198,58 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
 
     @app.get("/api/status")
     def status(actor=Depends(authenticated)):
+        catalog = providers.catalog()
+        paid_available = actor[0].is_owner and providers.get("openai").configured()
+        for item in catalog:
+            if item["id"] == "openai" and not paid_available:
+                item.update(usable=False, paid_calls=False, state="disabled")
         return {
             "phase": 1, "assistant_engine": "provider_fallback",
             "openclaw": ("not_verified" if assistant.available(actor[0].is_owner) else "disabled"),
             "openclaw_available": assistant.available(actor[0].is_owner),
             "tools": "disabled",
-            "default_provider": settings.default_provider, "providers": providers.catalog(),
+            "default_provider": settings.default_provider, "providers": catalog,
             "skills": [{"id": key, "label": value[0]} for key, value in SKILLS.items()],
-            "paid_api_calls": "disabled",
+            "paid_api_calls": "opt_in" if paid_available else "disabled",
         }
 
     @app.post("/api/providers/{provider}/test")
     async def provider_test(provider: ProviderName, actor=Depends(authenticated)):
+        if provider == "openai" and not actor[0].is_owner:
+            raise HTTPException(403, "OpenAI는 소유자 전용입니다.")
         if not chat_limiter.allow(actor[0].id):
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
         try:
             return await providers.get(provider).probe()
+        except ProviderUnavailable as exc:
+            raise HTTPException(503, str(exc)) from None
+
+    @app.get("/api/usage")
+    def usage(actor=Depends(authenticated)):
+        if not actor[0].is_owner:
+            raise HTTPException(403, "사용량 조회는 소유자 전용입니다.")
+        return {"currency": "USD", "period": "UTC day", "records": ledger.history(actor[0].id)}
+
+    @app.post("/api/conversations/{conversation_id}/quote")
+    def quote(
+        conversation_id: str, body: ChatRequest, actor=Depends(authenticated),
+        repo: Repository = Depends(repository),
+    ):
+        user = actor[0]
+        if not user.is_owner:
+            raise HTTPException(403, "OpenAI는 소유자 전용입니다.")
+        items = repo.messages(user.id, conversation_id)
+        if items is None:
+            raise HTTPException(404, "대화를 찾을 수 없습니다.")
+        if body.engine != "provider_fallback" or body.provider != "openai":
+            raise HTTPException(422, "OpenAI 기본 비서 호출만 비용 조회를 지원합니다.")
+        if not chat_limiter.allow(user.id):
+            raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
+        prompt = [{"role": "system", "content": system_prompt(body.skill)}]
+        history = [{"role": m.role, "content": m.content} for m in items]
+        prompt += (history + [{"role": "user", "content": body.content}])[-20:]
+        try:
+            return ledger.quote(prompt)
         except ProviderUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
 
@@ -265,6 +304,11 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
         if body.engine == "openclaw" and (not user.is_owner or settings.mode != "local"):
             raise HTTPException(403, "OpenClaw는 로컬 소유자 전용입니다.")
+        if body.engine == "provider_fallback" and (body.provider or settings.default_provider) == "openai":
+            if not user.is_owner:
+                raise HTTPException(403, "OpenAI는 소유자 전용입니다.")
+            if not body.allow_paid:
+                raise HTTPException(403, "이 요청의 유료 API 사용에 동의해야 합니다.")
         revision = conversation.revision
         history = [{"role": m.role, "content": m.content}
                    for m in repo.messages(user.id, conversation_id)]
@@ -273,7 +317,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         try:
             result = await assistant.reply(
                 body.engine,
-                AssistantContext(user.id, conversation_id, user.is_owner),
+                AssistantContext(user.id, conversation_id, user.is_owner, body.allow_paid),
                 history + [{"role": "user", "content": body.content}],
                 body.provider or settings.default_provider, body.skill,
             )
@@ -288,6 +332,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             "skill": body.skill, "simulated": result.simulated,
             "usage": {"input_tokens": result.input_tokens, "output_tokens": result.output_tokens},
             "assistant_engine": body.engine, "tools": [],
+            "billing": {"calculated_usd": result.cost_usd, "state": result.billing_state},
         }
 
     return app

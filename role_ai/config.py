@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
@@ -25,7 +26,12 @@ class Settings(BaseSettings):
     vllm_model: str = ""
     openai_enabled: bool = False
     openai_api_key: SecretStr = SecretStr("")
-    openai_model: str = ""
+    openai_model: str = Field(default="", max_length=100, pattern=r"^[A-Za-z0-9._:-]*$")
+    openai_input_usd_per_million: Decimal = Field(default=Decimal("0"), ge=0, le=1000000, allow_inf_nan=False)
+    openai_output_usd_per_million: Decimal = Field(default=Decimal("0"), ge=0, le=1000000, allow_inf_nan=False)
+    openai_daily_budget_usd: Decimal = Field(default=Decimal("0"), ge=0, le=1000, allow_inf_nan=False)
+    openai_request_budget_usd: Decimal = Field(default=Decimal("0"), ge=0, le=100, allow_inf_nan=False)
+    openai_max_output_tokens: int = Field(default=512, ge=32, le=4096)
     openclaw_enabled: bool = False
     openclaw_config_path: str = ""
     openclaw_url: str = "http://127.0.0.1:18789"

@@ -18,6 +18,8 @@ class ModelReply:
     input_tokens: int | None = None
     output_tokens: int | None = None
     simulated: bool = False
+    cost_usd: str | None = None
+    billing_state: str | None = None
 
 
 class ModelProvider(Protocol):
@@ -104,12 +106,13 @@ class ReservedProvider:
 
 
 class ProviderManager:
-    def __init__(self, settings: Settings, ollama_transport=None):
+    def __init__(self, settings: Settings, ollama_transport=None, ledger=None, openai_transport=None):
+        from role_ai.openai_provider import OpenAIProvider
         self.settings = settings
         self.providers: dict[str, ModelProvider] = {
             "ollama": OllamaProvider(settings, ollama_transport),
             "vllm": ReservedProvider("vLLM"),
-            "openai": ReservedProvider("OpenAI"),
+            "openai": OpenAIProvider(settings, ledger, openai_transport),
         }
         if settings.demo_enabled:
             self.providers["mock"] = MockProvider()
@@ -120,13 +123,14 @@ class ProviderManager:
         return self.providers[name]
 
     def catalog(self):
+        ready = self.providers["openai"].configured()
         items = [
             {"id": "ollama", "model": self.settings.ollama_model,
              "state": "not_verified", "usable": True, "paid_calls": False},
             {"id": "vllm", "model": self.settings.vllm_model,
              "state": "not_implemented", "usable": False, "paid_calls": False},
             {"id": "openai", "model": self.settings.openai_model,
-             "state": "not_implemented", "usable": False, "paid_calls": False},
+             "state": "not_verified" if ready else "disabled", "usable": ready, "paid_calls": ready},
         ]
         if self.settings.demo_enabled:
             items.append({"id": "mock", "model": "mock-test", "state": "simulated",
