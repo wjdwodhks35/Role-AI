@@ -26,6 +26,8 @@ services:
       ROLE_AI_DATABASE_URL: sqlite:////app/data/role-ai.db
       ROLE_AI_OLLAMA_URL: http://host.docker.internal:11434
     command: ["python", "-m", "role_ai.collection"]
+    healthcheck:
+      disable: true
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

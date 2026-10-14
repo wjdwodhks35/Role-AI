@@ -36,3 +36,5 @@ overlay는 GPU0과 utility 드라이버 기능을 API/수집 컨테이너에 제
 자동 테스트는 가짜 측정값으로 저장/권한/한도/여유/장애/실행 경로/학습 blocked/할당기 호출/OOM을 검증합니다. 실제 RTX4060Ti·WSL·NVIDIA Container Toolkit·PyTorch GPU 메모리는 실환경 검증 대기입니다. 모델별 추정치는 실제 환경에서 조정해야 합니다.
 
 공식 기준: [NVIDIA SMI](https://docs.nvidia.com/deploy/nvidia-smi/index.html), [PyTorch allocator fraction](https://docs.pytorch.org/docs/stable/generated/torch.cuda.memory.set_per_process_memory_fraction.html), [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/docker-specialized.html).
+
+수집 CLI 컨테이너에는 웹 API 이미지의 HTTP healthcheck를 적용하지 않습니다. Worker 운영 상태는 종료 코드/로그와 수집 예약 이력으로 확인합니다. 이 구성은 실제 GPU 접근을 검증한 결과가 아닙니다.
