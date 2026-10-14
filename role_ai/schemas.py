@@ -31,6 +31,7 @@ class ConversationCreate(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    project: str = Field(default="", max_length=80)
     allow_paid: bool = False
     engine: Literal["provider_fallback", "openclaw"] = "provider_fallback"
     content: str = Field(min_length=1, max_length=4000)

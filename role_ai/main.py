@@ -11,16 +11,18 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
-from role_ai.assistant import AssistantContext, AssistantManager
+from role_ai.assistant import AssistantContext, AssistantManager, memory_prompt
 from role_ai.billing import BillingLedger
 from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
+from role_ai.learning import learning_router
+from role_ai.memory import MemoryRepository, memory_router
 from role_ai.providers import ProviderManager, ProviderUnavailable
 from role_ai.repositories import ConcurrentTurn, Repository
 from role_ai.schemas import ChatRequest, ConversationCreate, Credentials, ProviderName
 from role_ai.security import RateLimiter, hash_password, token_hash, verify_password
-from role_ai.skills import SKILLS, system_prompt
+from role_ai.skills import SKILLS
 
 COOKIE = "role_ai_session"
 STATIC = Path(__file__).parent / "static"
@@ -38,7 +40,7 @@ def message_dict(item):
     }
 
 
-def create_app(settings: Settings | None = None, providers=None, gateway_transport=None, openai_transport=None):
+def create_app(settings: Settings | None = None, providers=None, gateway_transport=None, openai_transport=None, hf_transport=None):
     settings = settings or Settings()
     engine, factory = build_database(settings.database_url)
     ledger = BillingLedger(settings, factory)
@@ -117,6 +119,9 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             raise HTTPException(409, "진행 중인 대화 요청이 있습니다. 완료 후 다시 시도하세요.")
         async with lock:
             yield
+
+    app.include_router(memory_router(authenticated, repository, providers))
+    app.include_router(learning_router(authenticated, repository, settings, providers, ledger, hf_transport))
 
     def limit_auth(request):
         address = request.client.host if request.client else "unknown"
@@ -205,6 +210,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
                 item.update(usable=False, paid_calls=False, state="disabled")
         return {
             "phase": 1, "assistant_engine": "provider_fallback",
+            "learning_available": actor[0].is_owner and settings.mode == "local",
             "openclaw": ("not_verified" if assistant.available(actor[0].is_owner) else "disabled"),
             "openclaw_available": assistant.available(actor[0].is_owner),
             "tools": "disabled",
@@ -245,7 +251,9 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             raise HTTPException(422, "OpenAI 기본 비서 호출만 비용 조회를 지원합니다.")
         if not chat_limiter.allow(user.id):
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
-        prompt = [{"role": "system", "content": system_prompt(body.skill)}]
+        context = AssistantContext(user.id, conversation_id, user.is_owner, False,
+                                   MemoryRepository(repo.db).context(user.id, body.content, body.project))
+        prompt = [{"role": "system", "content": memory_prompt(body.skill, context)}]
         history = [{"role": m.role, "content": m.content} for m in items]
         prompt += (history + [{"role": "user", "content": body.content}])[-20:]
         try:
@@ -312,12 +320,13 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         revision = conversation.revision
         history = [{"role": m.role, "content": m.content}
                    for m in repo.messages(user.id, conversation_id)]
+        memory_context = MemoryRepository(repo.db).context(user.id, body.content, body.project)
         # Release the read transaction before waiting for the model.
         repo.db.rollback()
         try:
             result = await assistant.reply(
                 body.engine,
-                AssistantContext(user.id, conversation_id, user.is_owner, body.allow_paid),
+                AssistantContext(user.id, conversation_id, user.is_owner, body.allow_paid, memory_context),
                 history + [{"role": "user", "content": body.content}],
                 body.provider or settings.default_provider, body.skill,
             )
