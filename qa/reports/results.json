@@ -1,20 +1,20 @@
 {
-  "commit": "00a06a66bcd85894dab689d4c3ab7b26dbe62393",
-  "run_url": "https://github.com/wjdwodhks35/Role-AI/actions/runs/38510448921",
-  "utc": "2026-10-14T04:16:11.046876+00:00",
+  "commit": "1925a9f2b012d51e60e81945aa6558eff5a54d9d",
+  "run_url": "https://github.com/wjdwodhks35/Role-AI/actions/runs/38522557598",
+  "utc": "2026-10-14T06:31:15.933788+00:00",
   "plan": "qa/Role-AI_unit_tests.xlsx",
   "ordered": true,
   "exit_code": 0,
-  "scenarios": 72,
-  "executions": 98,
-  "passed_scenarios": 72,
+  "scenarios": 84,
+  "executions": 116,
+  "passed_scenarios": 84,
   "results": [
     {
       "id": "UT-001",
       "selector": "tests/test_api.py::test_health_and_static",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.1965,
+      "seconds": 0.3715,
       "detail": ""
     },
     {
@@ -22,7 +22,7 @@
       "selector": "tests/test_api.py::test_requires_auth",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2292,
+      "seconds": 0.2438,
       "detail": ""
     },
     {
@@ -30,7 +30,7 @@
       "selector": "tests/test_api.py::test_password_and_session_storage",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2641,
+      "seconds": 0.4451,
       "detail": ""
     },
     {
@@ -38,7 +38,7 @@
       "selector": "tests/test_api.py::test_logout_invalidates_server_session",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2542,
+      "seconds": 0.4394,
       "detail": ""
     },
     {
@@ -46,7 +46,7 @@
       "selector": "tests/test_api.py::test_login_and_bad_credentials",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.4615,
+      "seconds": 0.8113,
       "detail": ""
     },
     {
@@ -54,7 +54,7 @@
       "selector": "tests/test_api.py::test_duplicate_registration",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3896,
+      "seconds": 0.6196,
       "detail": ""
     },
     {
@@ -62,7 +62,7 @@
       "selector": "tests/test_api.py::test_csrf_and_origin",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2513,
+      "seconds": 0.4403,
       "detail": ""
     },
     {
@@ -70,7 +70,7 @@
       "selector": "tests/test_api.py::test_expired_session",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2512,
+      "seconds": 0.4354,
       "detail": ""
     },
     {
@@ -78,7 +78,7 @@
       "selector": "tests/test_api.py::test_user_isolation",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3696,
+      "seconds": 0.635,
       "detail": ""
     },
     {
@@ -86,7 +86,7 @@
       "selector": "tests/test_api.py::test_chat_records_real_metadata_and_marks_mock",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2639,
+      "seconds": 0.5252,
       "detail": ""
     },
     {
@@ -94,7 +94,7 @@
       "selector": "tests/test_api.py::test_unimplemented_provider_never_fakes_success",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.26,
+      "seconds": 0.4487,
       "detail": ""
     },
     {
@@ -102,7 +102,7 @@
       "selector": "tests/test_api.py::test_invalid_requests",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2589,
+      "seconds": 0.4487,
       "detail": ""
     },
     {
@@ -110,7 +110,7 @@
       "selector": "tests/test_api.py::test_body_limit",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2363,
+      "seconds": 0.2278,
       "detail": ""
     },
     {
@@ -118,7 +118,7 @@
       "selector": "tests/test_api.py::test_auth_rate_limit",
       "status": "PASS",
       "executions": 1,
-      "seconds": 1.2078,
+      "seconds": 2.1094,
       "detail": ""
     },
     {
@@ -126,7 +126,7 @@
       "selector": "tests/test_api.py::test_provider_probe",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2563,
+      "seconds": 0.4379,
       "detail": ""
     },
     {
@@ -134,7 +134,7 @@
       "selector": "tests/test_boundaries.py::test_password_hashes_are_salted",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.4093,
+      "seconds": 0.734,
       "detail": ""
     },
     {
@@ -142,7 +142,7 @@
       "selector": "tests/test_boundaries.py::test_public_mode_cannot_enable_mock_or_insecure_cookies",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.003,
+      "seconds": 0.0045,
       "detail": ""
     },
     {
@@ -150,7 +150,7 @@
       "selector": "tests/test_boundaries.py::test_registration_disabled_and_bootstrap_owner",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3533,
+      "seconds": 0.6191,
       "detail": ""
     },
     {
@@ -158,7 +158,7 @@
       "selector": "tests/test_boundaries.py::test_ollama_payload_and_metadata",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.0018,
+      "seconds": 0.0024,
       "detail": ""
     },
     {
@@ -166,7 +166,7 @@
       "selector": "tests/test_boundaries.py::test_ollama_errors_do_not_leak_upstream_data",
       "status": "PASS",
       "executions": 3,
-      "seconds": 0.0043,
+      "seconds": 0.0062,
       "detail": ""
     },
     {
@@ -174,7 +174,7 @@
       "selector": "tests/test_boundaries.py::test_ollama_probe_checks_model_installation",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.0013,
+      "seconds": 0.002,
       "detail": ""
     },
     {
@@ -182,7 +182,7 @@
       "selector": "tests/test_boundaries.py::test_paid_provider_and_mock_are_not_enabled_implicitly",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.001,
+      "seconds": 0.0015,
       "detail": ""
     },
     {
@@ -190,7 +190,7 @@
       "selector": "tests/test_boundaries.py::test_openclaw_and_permission_gate_fail_closed",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.0009,
+      "seconds": 0.0014,
       "detail": ""
     },
     {
@@ -198,7 +198,7 @@
       "selector": "tests/test_boundaries.py::test_concurrent_turn_cannot_overwrite_history",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2536,
+      "seconds": 0.4372,
       "detail": ""
     },
     {
@@ -206,7 +206,7 @@
       "selector": "tests/test_boundaries.py::test_limiter_capacity_fails_closed",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.0002,
+      "seconds": 0.0003,
       "detail": ""
     },
     {
@@ -214,7 +214,7 @@
       "selector": "tests/test_openclaw.py::test_gateway_contract_and_stable_session",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.0033,
+      "seconds": 0.0045,
       "detail": ""
     },
     {
@@ -222,7 +222,7 @@
       "selector": "tests/test_openclaw.py::test_gateway_guards_before_network",
       "status": "PASS",
       "executions": 8,
-      "seconds": 0.0139,
+      "seconds": 0.0193,
       "detail": ""
     },
     {
@@ -230,7 +230,7 @@
       "selector": "tests/test_openclaw.py::test_gateway_error_redaction_without_retries",
       "status": "PASS",
       "executions": 4,
-      "seconds": 0.0081,
+      "seconds": 0.0112,
       "detail": ""
     },
     {
@@ -238,7 +238,7 @@
       "selector": "tests/test_openclaw.py::test_owner_chat_nonowner_rejection_and_manual_fallback",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.4884,
+      "seconds": 0.8555,
       "detail": ""
     },
     {
@@ -246,7 +246,7 @@
       "selector": "tests/test_openai.py::test_quote_never_calls_provider",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3786,
+      "seconds": 0.7014,
       "detail": ""
     },
     {
@@ -254,7 +254,7 @@
       "selector": "tests/test_openai.py::test_consent_required_before_reservation",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3637,
+      "seconds": 0.6321,
       "detail": ""
     },
     {
@@ -262,7 +262,7 @@
       "selector": "tests/test_openai.py::test_responses_contract_and_settlement",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3784,
+      "seconds": 0.7206,
       "detail": ""
     },
     {
@@ -270,7 +270,7 @@
       "selector": "tests/test_openai.py::test_missing_config_blocks_before_network",
       "status": "PASS",
       "executions": 7,
-      "seconds": 2.7048,
+      "seconds": 4.5065,
       "detail": ""
     },
     {
@@ -278,7 +278,7 @@
       "selector": "tests/test_openai.py::test_model_probe_does_not_infer_or_reserve",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3652,
+      "seconds": 0.6279,
       "detail": ""
     },
     {
@@ -286,7 +286,7 @@
       "selector": "tests/test_openai.py::test_nonowner_cannot_use_or_inspect_owner_key",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.4767,
+      "seconds": 0.8287,
       "detail": ""
     },
     {
@@ -294,7 +294,7 @@
       "selector": "tests/test_openai.py::test_request_limit_blocks_network",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3666,
+      "seconds": 0.6272,
       "detail": ""
     },
     {
@@ -302,7 +302,7 @@
       "selector": "tests/test_openai.py::test_timeout_retains_budget_across_retries_and_days",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.5594,
+      "seconds": 0.6547,
       "detail": ""
     },
     {
@@ -310,7 +310,7 @@
       "selector": "tests/test_openai.py::test_uncertain_or_rejected_output_is_accounted",
       "status": "PASS",
       "executions": 4,
-      "seconds": 1.4989,
+      "seconds": 2.6926,
       "detail": ""
     },
     {
@@ -318,7 +318,7 @@
       "selector": "tests/test_openai.py::test_snapshot_model_is_reported_honestly",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3778,
+      "seconds": 0.6358,
       "detail": ""
     },
     {
@@ -326,7 +326,7 @@
       "selector": "tests/test_openai.py::test_budget_reservation_is_atomic",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3632,
+      "seconds": 0.6305,
       "detail": ""
     },
     {
@@ -334,7 +334,7 @@
       "selector": "tests/test_openai.py::test_settlement_uses_reserved_price_snapshot",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3621,
+      "seconds": 0.628,
       "detail": ""
     },
     {
@@ -342,7 +342,7 @@
       "selector": "tests/test_openai.py::test_cancellation_retains_reservation",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3704,
+      "seconds": 0.6303,
       "detail": ""
     },
     {
@@ -350,7 +350,7 @@
       "selector": "tests/test_memory.py::test_memory_confirmed_dedup_search_and_export",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2629,
+      "seconds": 0.4457,
       "detail": ""
     },
     {
@@ -358,7 +358,7 @@
       "selector": "tests/test_memory.py::test_memory_edit_revision_history_and_delete",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3997,
+      "seconds": 0.4586,
       "detail": ""
     },
     {
@@ -366,7 +366,7 @@
       "selector": "tests/test_memory.py::test_expired_and_other_project_memories_are_excluded",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2495,
+      "seconds": 0.4435,
       "detail": ""
     },
     {
@@ -374,7 +374,7 @@
       "selector": "tests/test_memory.py::test_memory_ownership_and_provenance",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3615,
+      "seconds": 0.7317,
       "detail": ""
     },
     {
@@ -382,7 +382,7 @@
       "selector": "tests/test_memory.py::test_candidates_are_not_active_until_confirmation",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.273,
+      "seconds": 0.4672,
       "detail": ""
     },
     {
@@ -390,7 +390,7 @@
       "selector": "tests/test_memory.py::test_chat_uses_memory_without_changing_system_policy",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2518,
+      "seconds": 0.4499,
       "detail": ""
     },
     {
@@ -398,7 +398,7 @@
       "selector": "tests/test_memory.py::test_empty_memory_rejected",
       "status": "PASS",
       "executions": 2,
-      "seconds": 0.4926,
+      "seconds": 0.8687,
       "detail": ""
     },
     {
@@ -406,7 +406,7 @@
       "selector": "tests/test_requirements_regressions.py::test_edit_cannot_create_duplicate_active_memory",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2752,
+      "seconds": 0.4672,
       "detail": ""
     },
     {
@@ -414,7 +414,7 @@
       "selector": "tests/test_requirements_regressions.py::test_concurrent_identical_memory_requests_are_deduplicated",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.2913,
+      "seconds": 0.4792,
       "detail": ""
     },
     {
@@ -422,7 +422,7 @@
       "selector": "tests/test_requirements_regressions.py::test_malformed_extraction_does_not_save_memory",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.4167,
+      "seconds": 0.4569,
       "detail": ""
     },
     {
@@ -430,7 +430,7 @@
       "selector": "tests/test_requirements_regressions.py::test_memory_mutation_requires_csrf",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.258,
+      "seconds": 0.5366,
       "detail": ""
     },
     {
@@ -438,7 +438,7 @@
       "selector": "tests/test_requirements_regressions.py::test_memory_context_budget_keeps_valid_json",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.277,
+      "seconds": 0.4708,
       "detail": ""
     },
     {
@@ -446,7 +446,7 @@
       "selector": "tests/test_huggingface.py::test_pinned_bounded_jsonl_import",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.002,
+      "seconds": 0.0027,
       "detail": ""
     },
     {
@@ -454,7 +454,7 @@
       "selector": "tests/test_huggingface.py::test_network_disabled_and_scan_limit",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.002,
+      "seconds": 0.0031,
       "detail": ""
     },
     {
@@ -462,7 +462,7 @@
       "selector": "tests/test_huggingface.py::test_token_not_forwarded_to_cdn_and_untrusted_redirect_blocked",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.0018,
+      "seconds": 0.0026,
       "detail": ""
     },
     {
@@ -470,7 +470,7 @@
       "selector": "tests/test_huggingface.py::test_unsupported_paths_and_formats_rejected",
       "status": "PASS",
       "executions": 4,
-      "seconds": 0.0014,
+      "seconds": 0.002,
       "detail": ""
     },
     {
@@ -478,7 +478,7 @@
       "selector": "tests/test_learning.py::test_documents_compression_split_and_purge",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.374,
+      "seconds": 0.6401,
       "detail": ""
     },
     {
@@ -486,7 +486,7 @@
       "selector": "tests/test_learning.py::test_normalization_dedup_pii_and_conflicts",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.0004,
+      "seconds": 0.0006,
       "detail": ""
     },
     {
@@ -494,7 +494,7 @@
       "selector": "tests/test_learning.py::test_quota_and_path_validation",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3549,
+      "seconds": 0.6215,
       "detail": ""
     },
     {
@@ -502,7 +502,7 @@
       "selector": "tests/test_learning.py::test_reviews_and_user_approval_are_both_required",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3981,
+      "seconds": 0.7175,
       "detail": ""
     },
     {
@@ -510,7 +510,7 @@
       "selector": "tests/test_learning.py::test_unknown_license_blocks_approval",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.4324,
+      "seconds": 0.6535,
       "detail": ""
     },
     {
@@ -518,7 +518,7 @@
       "selector": "tests/test_learning.py::test_new_review_invalidates_previous_approval",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3886,
+      "seconds": 0.6617,
       "detail": ""
     },
     {
@@ -526,7 +526,7 @@
       "selector": "tests/test_learning.py::test_enqueue_once_and_cancel_consumes_approval",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.7657,
+      "seconds": 0.6855,
       "detail": ""
     },
     {
@@ -534,7 +534,7 @@
       "selector": "tests/test_learning.py::test_training_disabled_blocks_enqueue_and_worker",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.5438,
+      "seconds": 0.7673,
       "detail": ""
     },
     {
@@ -542,7 +542,7 @@
       "selector": "tests/test_learning.py::test_worker_contract_does_not_activate_model",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.4304,
+      "seconds": 0.6775,
       "detail": ""
     },
     {
@@ -550,7 +550,7 @@
       "selector": "tests/test_learning.py::test_tampered_artifact_blocks_training",
       "status": "PASS",
       "executions": 2,
-      "seconds": 0.7967,
+      "seconds": 1.3408,
       "detail": ""
     },
     {
@@ -558,7 +558,7 @@
       "selector": "tests/test_learning.py::test_resource_block_retry_and_failure",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.5036,
+      "seconds": 0.6845,
       "detail": ""
     },
     {
@@ -566,7 +566,7 @@
       "selector": "tests/test_learning.py::test_nonowner_cannot_manage_learning",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.486,
+      "seconds": 0.8223,
       "detail": ""
     },
     {
@@ -574,7 +574,7 @@
       "selector": "tests/test_learning.py::test_recover_interrupted_job_requires_new_approval",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3996,
+      "seconds": 0.6807,
       "detail": ""
     },
     {
@@ -582,7 +582,103 @@
       "selector": "tests/test_learning.py::test_local_inference_is_blocked_while_worker_holds_storage_lock",
       "status": "PASS",
       "executions": 1,
-      "seconds": 0.3553,
+      "seconds": 0.6253,
+      "detail": ""
+    },
+    {
+      "id": "UT-073",
+      "selector": "tests/test_documents.py::test_document_roundtrip_dedup_and_project",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.5825,
+      "detail": ""
+    },
+    {
+      "id": "UT-074",
+      "selector": "tests/test_documents.py::test_document_validation",
+      "status": "PASS",
+      "executions": 7,
+      "seconds": 3.0974,
+      "detail": ""
+    },
+    {
+      "id": "UT-075",
+      "selector": "tests/test_documents.py::test_document_auth_and_csrf",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.4356,
+      "detail": ""
+    },
+    {
+      "id": "UT-076",
+      "selector": "tests/test_documents.py::test_document_user_isolation",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.79,
+      "detail": ""
+    },
+    {
+      "id": "UT-077",
+      "selector": "tests/test_documents.py::test_document_search_scope_and_boundaries",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.4559,
+      "detail": ""
+    },
+    {
+      "id": "UT-078",
+      "selector": "tests/test_documents.py::test_document_chat_prompt_and_history",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.4635,
+      "detail": ""
+    },
+    {
+      "id": "UT-079",
+      "selector": "tests/test_documents.py::test_document_chat_opt_in_and_no_match",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.4612,
+      "detail": ""
+    },
+    {
+      "id": "UT-080",
+      "selector": "tests/test_documents.py::test_document_chat_blocks_paid_gateway_and_wrong_project",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.4661,
+      "detail": ""
+    },
+    {
+      "id": "UT-081",
+      "selector": "tests/test_documents.py::test_document_context_limits_and_selection",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.4547,
+      "detail": ""
+    },
+    {
+      "id": "UT-082",
+      "selector": "tests/test_documents.py::test_document_quota_and_cleanup",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.5791,
+      "detail": ""
+    },
+    {
+      "id": "UT-083",
+      "selector": "tests/test_documents.py::test_document_concurrent_duplicate",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.4796,
+      "detail": ""
+    },
+    {
+      "id": "UT-084",
+      "selector": "tests/test_documents.py::test_document_deleted_source_history",
+      "status": "PASS",
+      "executions": 1,
+      "seconds": 0.6074,
       "detail": ""
     }
   ],
@@ -684,6 +780,24 @@
     "tests/test_learning.py::test_resource_block_retry_and_failure",
     "tests/test_learning.py::test_nonowner_cannot_manage_learning",
     "tests/test_learning.py::test_recover_interrupted_job_requires_new_approval",
-    "tests/test_learning.py::test_local_inference_is_blocked_while_worker_holds_storage_lock"
+    "tests/test_learning.py::test_local_inference_is_blocked_while_worker_holds_storage_lock",
+    "tests/test_documents.py::test_document_roundtrip_dedup_and_project",
+    "tests/test_documents.py::test_document_validation[values0]",
+    "tests/test_documents.py::test_document_validation[values1]",
+    "tests/test_documents.py::test_document_validation[values2]",
+    "tests/test_documents.py::test_document_validation[values3]",
+    "tests/test_documents.py::test_document_validation[values4]",
+    "tests/test_documents.py::test_document_validation[values5]",
+    "tests/test_documents.py::test_document_validation[values6]",
+    "tests/test_documents.py::test_document_auth_and_csrf",
+    "tests/test_documents.py::test_document_user_isolation",
+    "tests/test_documents.py::test_document_search_scope_and_boundaries",
+    "tests/test_documents.py::test_document_chat_prompt_and_history",
+    "tests/test_documents.py::test_document_chat_opt_in_and_no_match",
+    "tests/test_documents.py::test_document_chat_blocks_paid_gateway_and_wrong_project",
+    "tests/test_documents.py::test_document_context_limits_and_selection",
+    "tests/test_documents.py::test_document_quota_and_cleanup",
+    "tests/test_documents.py::test_document_concurrent_duplicate",
+    "tests/test_documents.py::test_document_deleted_source_history"
   ]
 }

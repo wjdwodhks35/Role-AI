@@ -13,3 +13,5 @@
 ## 문서 기능 검증 확장
 
 문서 보관·프로젝트 격리·로컬 문서 대화 등 12개 시나리오를 추가해 계획은 84개가 되었습니다. 이전 `qa/reports/` 결과는 해당 파일의 커밋/실행 날짜에 대한 기록입니다. 최신 CI 실행의 `requirements-unit-test-results` 아티팩트가 최신 전체 결과입니다.
+
+문서 기능 보강 후 전체 검증: 84개 시나리오/116개 실행 모두 PASS, Excel 순서 일치. 검증 근거: https://github.com/wjdwodhks35/Role-AI/actions/runs/38522557598. `qa/reports/Role-AI_unit_tests_results.xlsx`와 `results.json`을 이 실행 결과로 갱신했습니다. 기존 기억 수정 결함의 최초 실패 기록은 유지합니다.
