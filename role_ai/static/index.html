@@ -126,6 +126,28 @@
   <dialog id="learning-dialog">
     <div class="dialog-head"><h2>학습 데이터 관리</h2><button id="learning-close">닫기</button></div>
     <p id="learning-status" class="muted"></p>
+    <details><summary>설정 · ChatGPT 자동 허용 모드</summary>
+      <p id="auto-policy-status" class="muted"></p>
+      <p class="muted">자동 수집된 최대 30행의 학습·평가 데이터를 OpenAI API로 전송해
+        최종 학습 승인을 위임합니다. API 사용료가 발생할 수 있습니다.
+        파일·메일·명령 권한과 모델 배포는 포함하지 않습니다. 승인 후 학습 작업 등록은 별도입니다.</p>
+      <form id="auto-policy-form" class="management-form">
+        <label><input id="auto-policy-enabled" type="checkbox">ChatGPT 자동 허용 모드</label>
+        <label><input id="auto-policy-paid" type="checkbox">표시된 서버 예산 안에서 반복 검수 비용과 데이터 외부 전송에 동의</label>
+        <label><input id="auto-policy-license" type="checkbox">허용 라이선스 범위의 데이터 이용 조건을 확인하고 승인을 위임</label>
+        <label><input id="auto-policy-privacy" type="checkbox">이 수집 범위의 개인정보 검토·전송·학습 승인 위임을 확인</label>
+        <label><input id="auto-policy-model" type="checkbox">지정된 기반 모델의 이용 조건을 확인</label>
+        <label>학습 대상<select id="auto-policy-skill"><option value="developer">개발</option>
+          <option value="professor">교수</option><option value="meeting">회의</option>
+          <option value="counselor">상담</option></select></label>
+        <label>최대 학습 스텝<input id="auto-policy-steps" type="number" min="1" max="100" value="30" required></label>
+        <label>최대 토큰 길이<input id="auto-policy-length" type="number" min="64" max="1024" value="512" required></label>
+        <button type="submit">설정 저장</button>
+      </form>
+      <p class="muted">정책을 끄거나 변경하면 아직 시작하지 않은 자동 승인과 해당 대기 작업을 철회합니다.
+        진행 중인 API 호출은 이미 비용이 발생했을 수 있고, 실행 중 학습은 즉시 중단되지 않습니다.</p>
+      <div id="auto-policy-history"></div>
+    </details>
     <details><summary>AI 자동 데이터 수집</summary>
       <p class="muted">로컬 Ollama와 Hugging Face를 사용합니다. 실행당 최대 30행을 선별하고
         검수 결과와 출처를 보관합니다. 자동 학습·모델 배포는 하지 않습니다.

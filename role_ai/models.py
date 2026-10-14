@@ -153,3 +153,25 @@ class CollectionPlan(Base):
     state: Mapped[str] = mapped_column(String(20), default="waiting")
     next_run: Mapped[float] = mapped_column(default=time.time, index=True)
     history: Mapped[str] = mapped_column(Text, default="[]")
+
+
+class AutoApprovalPolicy(Base):
+    __tablename__ = "auto_approval_policies"
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=False)
+    revision: Mapped[int] = mapped_column(default=1)
+    options: Mapped[str] = mapped_column(Text, default="{}")
+    binding: Mapped[str] = mapped_column(String(64), default="")
+
+
+class AutoApprovalAudit(Base):
+    __tablename__ = "auto_approval_audits"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset_snapshots.id", ondelete="CASCADE"), index=True)
+    policy_revision: Mapped[int]
+    dataset_revision: Mapped[int]
+    state: Mapped[str] = mapped_column(String(20), default="pending")
+    detail: Mapped[str] = mapped_column(Text, default="{}")
+    approval_hash: Mapped[str | None]
+    created_at: Mapped[float] = mapped_column(default=time.time)
