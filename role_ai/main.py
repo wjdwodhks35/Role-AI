@@ -1,3 +1,5 @@
+import asyncio
+import hashlib
 import hmac
 import secrets
 import time
@@ -9,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
-from role_ai.assistant import AssistantContext, ProviderAssistant
+from role_ai.assistant import AssistantContext, AssistantManager
 from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
@@ -35,11 +37,12 @@ def message_dict(item):
     }
 
 
-def create_app(settings: Settings | None = None, providers=None):
+def create_app(settings: Settings | None = None, providers=None, gateway_transport=None):
     settings = settings or Settings()
     engine, factory = build_database(settings.database_url)
     providers = providers or ProviderManager(settings)
-    assistant = ProviderAssistant(providers)
+    assistant = AssistantManager(settings, providers, gateway_transport)
+    turn_locks = [asyncio.Lock() for _ in range(32)]
     auth_limiter = RateLimiter(maximum=10)
     chat_limiter = RateLimiter(maximum=20)
     # Dummy hash equalizes unknown-user and wrong-password verification work.
@@ -102,6 +105,15 @@ def create_app(settings: Settings | None = None, providers=None):
         if not user:
             raise HTTPException(401, "로그인이 필요합니다.")
         return user, session
+
+    async def exclusive_turn(conversation_id: str, actor=Depends(authenticated)):
+        key = actor[0].id + ":" + conversation_id
+        index = int(hashlib.sha256(key.encode()).hexdigest(), 16) % len(turn_locks)
+        lock = turn_locks[index]
+        if lock.locked():
+            raise HTTPException(409, "진행 중인 대화 요청이 있습니다. 완료 후 다시 시도하세요.")
+        async with lock:
+            yield
 
     def limit_auth(request):
         address = request.client.host if request.client else "unknown"
@@ -185,7 +197,9 @@ def create_app(settings: Settings | None = None, providers=None):
     def status(actor=Depends(authenticated)):
         return {
             "phase": 1, "assistant_engine": "provider_fallback",
-            "openclaw": "not_implemented", "tools": "disabled",
+            "openclaw": ("not_verified" if assistant.available(actor[0].is_owner) else "disabled"),
+            "openclaw_available": assistant.available(actor[0].is_owner),
+            "tools": "disabled",
             "default_provider": settings.default_provider, "providers": providers.catalog(),
             "skills": [{"id": key, "label": value[0]} for key, value in SKILLS.items()],
             "paid_api_calls": "disabled",
@@ -197,6 +211,18 @@ def create_app(settings: Settings | None = None, providers=None):
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
         try:
             return await providers.get(provider).probe()
+        except ProviderUnavailable as exc:
+            raise HTTPException(503, str(exc)) from None
+
+    @app.post("/api/assistant/openclaw/test")
+    async def gateway_test(actor=Depends(authenticated)):
+        user = actor[0]
+        if not user.is_owner or settings.mode != "local":
+            raise HTTPException(403, "OpenClaw는 로컬 소유자 전용입니다.")
+        if not chat_limiter.allow(user.id):
+            raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
+        try:
+            return await assistant.openclaw.probe(AssistantContext(user.id, "probe", True))
         except ProviderUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
 
@@ -226,6 +252,7 @@ def create_app(settings: Settings | None = None, providers=None):
     @app.post("/api/conversations/{conversation_id}/chat")
     async def chat(
         conversation_id: str, body: ChatRequest, actor=Depends(authenticated),
+        turn=Depends(exclusive_turn),
         repo: Repository = Depends(repository),
     ):
         user = actor[0]
@@ -236,6 +263,8 @@ def create_app(settings: Settings | None = None, providers=None):
             raise HTTPException(409, "대화가 길어졌습니다. 새 대화를 시작해 주세요.")
         if not chat_limiter.allow(user.id):
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
+        if body.engine == "openclaw" and (not user.is_owner or settings.mode != "local"):
+            raise HTTPException(403, "OpenClaw는 로컬 소유자 전용입니다.")
         revision = conversation.revision
         history = [{"role": m.role, "content": m.content}
                    for m in repo.messages(user.id, conversation_id)]
@@ -243,6 +272,7 @@ def create_app(settings: Settings | None = None, providers=None):
         repo.db.rollback()
         try:
             result = await assistant.reply(
+                body.engine,
                 AssistantContext(user.id, conversation_id, user.is_owner),
                 history + [{"role": "user", "content": body.content}],
                 body.provider or settings.default_provider, body.skill,
@@ -257,7 +287,7 @@ def create_app(settings: Settings | None = None, providers=None):
             "content": result.text, "provider": result.provider, "model": result.model,
             "skill": body.skill, "simulated": result.simulated,
             "usage": {"input_tokens": result.input_tokens, "output_tokens": result.output_tokens},
-            "assistant_engine": "provider_fallback", "tools": [],
+            "assistant_engine": body.engine, "tools": [],
         }
 
     return app

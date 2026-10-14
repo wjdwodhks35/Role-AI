@@ -31,6 +31,7 @@ class ConversationCreate(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    engine: Literal["provider_fallback", "openclaw"] = "provider_fallback"
     content: str = Field(min_length=1, max_length=4000)
     provider: ProviderName | None = None
     skill: SkillName = "assistant"

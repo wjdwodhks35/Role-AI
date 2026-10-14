@@ -121,7 +121,7 @@ def test_unimplemented_provider_never_fakes_success(signed_in):
     assert response.status_code == 503
     assert signed_in.get(f"/api/conversations/{conversation_id}/messages").json() == []
     status = signed_in.get("/api/status").json()
-    assert status["openclaw"] == "not_implemented"
+    assert status["openclaw"] == "disabled"
     assert status["paid_api_calls"] == "disabled"
 
 

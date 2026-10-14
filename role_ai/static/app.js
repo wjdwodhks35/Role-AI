@@ -32,10 +32,11 @@ function showAuth() {
 
 function setBusy(value) {
   busy = value;
-  for (const id of ["send", "new-chat", "provider", "skill", "probe", "logout"]) {
+  for (const id of ["send", "new-chat", "engine", "provider", "skill", "probe", "logout"]) {
     $(id).disabled = value;
   }
   for (const button of $("conversation-list").querySelectorAll("button")) button.disabled = value;
+  if (!value) $("provider").disabled = $("engine").value === "openclaw";
   $("work-state").textContent = value ? "답변 생성 중…" : "준비됨 · 도구 실행 비활성화";
 }
 
@@ -88,6 +89,13 @@ async function enterWorkspace(data) {
   csrf = data.csrf_token; $("account").textContent = data.user.email;
   $("auth-view").hidden = true; $("workspace").hidden = false;
   const status = await api("/api/status");
+  $("engine").value = "provider_fallback";
+  $("provider").disabled = false;
+  $("current-engine").textContent = "기본 비서";
+  const gatewayOption = $("engine").querySelector('[value="openclaw"]');
+  gatewayOption.disabled = !status.openclaw_available;
+  gatewayOption.textContent = status.openclaw_available ? "OpenClaw · 연결 미확인" : "OpenClaw · 비활성화";
+  $("gateway-status").textContent = status.openclaw_available ? "연결 미확인 · 테스트 필요" : "비활성화 · 로컬 소유자 전용";
   $("provider").replaceChildren();
   for (const item of status.providers) {
     const option = document.createElement("option");
@@ -108,6 +116,10 @@ async function enterWorkspace(data) {
 }
 
 function updateProviderState() {
+  if ($("engine").value === "openclaw") {
+    $("connection-state").textContent = "OpenClaw 연결 미확인 · Gateway의 로컬 모델 사용";
+    return;
+  }
   $("connection-state").textContent = $("provider").value === "mock"
     ? "테스트 모드입니다. 실제 AI나 외부 서비스가 호출되지 않습니다."
     : "Ollama 연결 미확인 · 연결 테스트로 서버와 모델을 확인하세요.";
@@ -129,6 +141,11 @@ async function authenticate(register = false) {
 $("auth-form").addEventListener("submit", (event) => { event.preventDefault(); authenticate(); });
 $("register").addEventListener("click", () => authenticate(true));
 $("provider").addEventListener("change", updateProviderState);
+$("engine").addEventListener("change", () => {
+  $("provider").disabled = $("engine").value === "openclaw";
+  $("current-engine").textContent = $("engine").value === "openclaw" ? "OpenClaw" : "기본 비서";
+  updateProviderState();
+});
 $("skill").addEventListener("change", () => {
   $("engine-badge").textContent = $("skill").selectedOptions[0].textContent;
 });
@@ -144,9 +161,10 @@ $("logout").addEventListener("click", async () => {
 $("probe").addEventListener("click", async () => {
   setBusy(true);
   try {
-    const result = await api("/api/providers/" + $("provider").value + "/test", { method: "POST" });
+    const path = $("engine").value === "openclaw" ? "/api/assistant/openclaw/test" : "/api/providers/" + $("provider").value + "/test";
+    const result = await api(path, { method: "POST" });
     $("connection-state").textContent = result.state === "simulated"
-      ? "테스트 Provider 준비됨 · 실제 AI 연결 아님" : "연결 확인됨 · " + result.model;
+      ? "테스트 Provider 준비됨 · 실제 AI 연결 아님" : "연결 확인됨 · " + (result.model || result.agent) + (result.engine ? " · 추론은 미검증" : "");
   } catch (error) { $("connection-state").textContent = error.message; notify(error.message); }
   finally { setBusy(false); }
 });
@@ -161,11 +179,11 @@ $("chat-form").addEventListener("submit", async (event) => {
     });
     const result = await api("/api/conversations/" + activeConversation.id + "/chat", {
       method: "POST", body: JSON.stringify({
-        content, provider: $("provider").value, skill: $("skill").value
+        content, engine: $("engine").value, provider: $("provider").value, skill: $("skill").value
       })
     });
     $("message").value = ""; await openConversation(activeConversation);
-    $("engine-badge").textContent = result.simulated ? "테스트 응답" : "기본 비서 · " + result.skill;
+    $("engine-badge").textContent = result.simulated ? "테스트 응답" : (result.assistant_engine === "openclaw" ? "OpenClaw" : "기본 비서") + " · " + result.skill;
     $("connection-state").textContent = result.simulated
       ? "테스트 응답입니다. 실제 AI 연결 아님." : "응답 수신 · " + result.model;
   } catch (error) { notify(error.message); }

@@ -2,13 +2,15 @@
 
 ## 현재 구현과 최종 목표
 
-현재 경로: 브라우저 → FastAPI 인증/대화 → ProviderAssistant → Ollama 또는 명시적 Mock.
+현재 기본 경로: 브라우저 → FastAPI 인증/대화 → ProviderAssistant → Ollama 또는 명시적 Mock.
+선택적 소유자 경로: FastAPI → OpenClawGatewayAdapter → 루프백 Gateway의 로컬 모델.
 최종 경로: 브라우저/Windows 클라이언트 → HTTPS → Role-AI → 제한된 Assistant Gateway Adapter
 → OpenClaw → 허용된 Role Skills / Model Provider / 도구.
 
 Phase 1의 ProviderAssistant는 OpenClaw 도입 전까지 사용할 수 있는 교체 가능한 기본 비서입니다.
 AssistantEngine은 사용자·대화 식별자를 포함한 AssistantContext를 받습니다.
-OpenClawGatewayAdapter는 현재 호출을 명시적으로 거부합니다. 단일 인터페이스로 교체하되
+OpenClawGatewayAdapter는 로컬 소유자용 HTTP 대화와 연결 테스트를 제공합니다.
+전체 도구 차단 정책을 검사하며 실제 PC의 설치/실행은 별도 검증합니다. 단일 인터페이스로 교체하되
 공개 사용자와 소유자 전용 PC 제어 경로를 분리하는 것이 후속 단계의 전제입니다.
 
 Role-AI는 인증, 데이터 소유권, 기억/RAG, 권한, 작업 상태를 관리합니다.
@@ -51,7 +53,7 @@ UI는 모델/사용자 텍스트를 textContent로 표시하여 HTML 실행을 �
 현재 Compose는 API 한 프로세스와 SQLite volume만 제공합니다.
 모델은 호스트 Ollama를 사용합니다. 공유 모델은 연속 호출 시 keep_alive로 재사용합니다.
 GPU 자원 스케줄러, 모델 언로드, Whisper 충돌 방지, 양자화/CPU offload 관리 기능은 미구현입니다.
-공개 연결은 Cloudflare Tunnel 등 HTTPS 설정 후 별도 단계로 진행합니다.
+현재 공개 배포는 계획하지 않습니다. 향후 Linux 서버 구축 단계에서 HTTPS 운영을 검토합니다.
 공개 사용자 요청을 소유자 전용 OpenClaw 인스턴스로 바로 전달하지 않습니다.
 향후 Worker는 비동기 작업을 별도 실행하며 승인된 입력만 받아야 합니다.
 
