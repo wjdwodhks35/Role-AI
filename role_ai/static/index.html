@@ -56,6 +56,7 @@
         <label>프로젝트<input id="project" maxlength="80" placeholder="공통"></label>
         <label>전문 Skill<select id="skill"></select></label>
         <button id="probe">연결 테스트</button>
+        <button id="gpu-open" hidden>GPU 메모리 설정</button>
         <button id="documents-open">문서 관리</button>
         <button id="memory-open">기억 관리</button>
         <button id="learning-open">학습 데이터</button>
@@ -91,6 +92,29 @@
       <p class="muted">아직 제공되지 않는 기능은 실행되지 않습니다. Mock은 실제 AI 응답이 아닌 테스트용입니다.</p>
     </section>
   </div>
+  <dialog id="gpu-dialog">
+    <div class="dialog-head"><h2>GPU 메모리 설정</h2><button id="gpu-close">닫기</button></div>
+    <p id="gpu-measurement" class="muted"></p>
+    <p class="muted">GPU 0 한 개에 적용합니다. GPU 전체 사용량과 예상 추가 메모리를 기준으로
+      새 작업 시작을 제한합니다. 다른 프로그램을 강제로 종료하거나 GPU를 분할하지 않습니다.</p>
+    <form id="gpu-form" class="management-form">
+      <label><input id="gpu-enabled" type="checkbox">메모리 한도 검사 켜기</label>
+      <label>최대 VRAM 사용 한도(GiB)<input id="gpu-limit" type="number" min="0.5" max="128" step="0.5" value="6" required></label>
+      <label>시스템 여유 VRAM(GiB)<input id="gpu-reserve" type="number" min="0" max="64" step="0.5" value="1" required></label>
+      <details><summary>작업별 예상 추가 메모리</summary>
+        <p class="muted">모델과 작업에 따라 달라지는 추정값입니다. 실제 GPU에서 확인 후 조정하세요.
+          이미 로드된 모델은 보수적으로 추가 계산되므로 작업이 대기할 수 있습니다.</p>
+        <label>채팅·로컬 검수·OpenClaw(GiB)<input id="gpu-inference" type="number" min="0.125" max="128" step="0.125" value="4" required></label>
+        <label>임베딩(GiB)<input id="gpu-embedding" type="number" min="0.125" max="128" step="0.125" value="1" required></label>
+        <label>학습(GiB)<input id="gpu-training" type="number" min="0.125" max="128" step="0.125" value="5" required></label>
+      </details>
+      <button type="submit" class="primary">설정 저장</button>
+      <button id="gpu-refresh" type="button">사용량 확인</button>
+    </form>
+    <p class="muted">변경은 다음 작업부터 적용됩니다. 검사 활성화 시 측정할 수 없으면 작업을 시작하지 않습니다.
+      채팅은 한도 초과 안내 후 다시 시도하며, 학습은 대기 상태로 남습니다.
+      학습 할당기 제한 외의 GPU 사용량은 강제 상한을 보장하지 않습니다.</p>
+  </dialog>
   <dialog id="documents-dialog">
     <div class="dialog-head"><h2>문서와 검색 근거</h2><button id="documents-close">닫기</button></div>
     <p class="muted">UTF-8 텍스트·Markdown 최대 48KB, PDF 최대 512KB·20페이지. 추출 텍스트는 최대 16,000자, 계정당 32개. PDF 원본은 보관하지 않으며 스캔 PDF OCR은 미지원.

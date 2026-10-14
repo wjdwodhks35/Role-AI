@@ -9,6 +9,7 @@ from sqlalchemy import select, update
 
 from role_ai.artifacts import ArtifactStore, canonical, digest, storage_lock
 from role_ai.config import Settings
+from role_ai.gpu_resources import GpuBudgetError, configure_allocator, preflight
 from role_ai.database import Base, build_database
 from role_ai.models import DatasetSnapshot, TrainingJob
 
@@ -37,6 +38,14 @@ def model_fingerprint(directory):
 
 
 def run_sft(plan, train, evaluation, output):
+    import torch
+    try:
+        return _run_sft(plan, train, evaluation, output)
+    except torch.cuda.OutOfMemoryError:
+        raise ResourcesBusy("GPU 메모리 한도 또는 가용 VRAM이 부족합니다. 설정 확인 후 재시도하세요.") from None
+
+
+def _run_sft(plan, train, evaluation, output):
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
     from datasets import Dataset
@@ -48,7 +57,9 @@ def run_sft(plan, train, evaluation, output):
     if not torch.cuda.is_available():
         raise ResourcesBusy("NVIDIA CUDA 환경이 준비되지 않았습니다.")
     free, total = torch.cuda.mem_get_info()
-    if free / total < 0.85:
+    limits = plan.get("resource_limits", {"enabled": False})
+    configure_allocator(torch, limits, total)
+    if not limits.get("enabled") and free / total < 0.85:
         raise ResourcesBusy("다른 GPU 작업을 중지하고 VRAM을 확보하세요.")
     local = plan["base_model_path"]
     tokenizer = AutoTokenizer.from_pretrained(local, local_files_only=True, trust_remote_code=False)
@@ -145,11 +156,15 @@ def run_one(settings, trainer=run_sft):
                             or model_fingerprint(plan["base_model_path"]) != plan["base_model_fingerprint"]):
                         raise ValueError("승인된 기반 모델이 변경됐습니다.")
                     train, evaluation, _ = store.read(uid, sid, item.data_hash)
+                    try:
+                        limits = preflight(settings, "training")
+                    except GpuBudgetError as exc:
+                        raise ResourcesBusy(str(exc)) from None
                     item.state = "running"
                     db.commit()
                     output = store.path(uid, sid) / ("run-" + jid)
                     output.mkdir(exist_ok=False)
-                    report = trainer(plan, train, evaluation, output)
+                    report = trainer({**plan, "resource_limits": limits}, train, evaluation, output)
                     used = sum(p.stat().st_size for p in store.root.rglob("*") if p.is_file())
                     if used > settings.artifact_quota_bytes:
                         import shutil

@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from role_ai.artifacts import storage_lock
+from role_ai.gpu_resources import GpuBudgetError, preflight
 
 
 class SemanticRequest(BaseModel):
@@ -37,6 +38,7 @@ class SemanticSearch:
             raise HTTPException(409, "검색할 문서를 줄여주세요.")
         try:
             with storage_lock(self.settings.storage_dir):
+                preflight(self.settings, "embedding")
                 async with asyncio.timeout(self.settings.provider_timeout_seconds):
                     async with httpx.AsyncClient(
                         base_url=self.settings.ollama_url.rstrip("/") + "/",
@@ -86,6 +88,8 @@ class SemanticSearch:
                     if norm == 0:
                         raise ValueError("zero vector")
                     normalized.append([v / norm for v in vector])
+        except GpuBudgetError as exc:
+            raise HTTPException(503, str(exc)) from None
         except (httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError):
             raise HTTPException(503, "로컬 임베딩 연결·응답 또는 자원 상태를 확인하세요. 검색을 대신 실행하지 않았습니다.") from None
         ranked = []
