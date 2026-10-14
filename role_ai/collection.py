@@ -233,7 +233,8 @@ async def collect(settings, factory, providers, hf, uid, topic):
             automatic = {"state": "failed", "reason": "자동 승인 조건 또는 설정을 확인하세요."}
     return {"state": "collected", "dataset_id": sid, "auto_approval": automatic, "data_hash": data_hash,
             "reviews": {stage: value["verdict"] for stage, value in reviews.items()},
-            "scope": "three training samples", "training": "not_started"}
+            "scope": {"teacher_reviewer": "all_selected_train_and_eval_samples",
+                      "local_orchestrator": "three training samples"}, "training": "not_started"}
 
 
 async def run_one(settings, factory, providers, hf, now=None):

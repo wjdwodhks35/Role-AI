@@ -71,7 +71,7 @@ UI는 최대 30행, API는 최대 100행, 기본 읽기 제한은 2MiB입니다.
 
 ## 검수와 승인
 
-Teacher → Reviewer는 Ollama의 공유 모델로 순차 실행합니다.
+Teacher → Reviewer는 Ollama의 공유 모델로 선택된 학습·평가 전체 샘플을 행별 순차 검수합니다.
 오케스트레이터는 공식 OpenAI Provider를 사용하며 별도 호출 동의와 예산 검사 후 실행합니다.
 실제 API 키가 없으면 검수 성공으로 가장하지 않습니다.
 GPT에 보내는 자료는 학습 미리보기 3개와 manifest이며 평가셋은 보내지 않습니다.
@@ -139,7 +139,7 @@ Worker는 offline/local-only 로딩, trust_remote_code=false, Safetensors 로딩
 4bit NF4 기본 모델에 LoRA rank 8, batch 1, gradient accumulation 8을 적용합니다.
 기본 30 steps/512 context이며 승인 API에서는 100 steps/1024 context 이내로 선택합니다.
 승인한 문맥 길이를 넘는 샘플은 몰래 잘라 학습하지 않고 실패 처리합니다.
-학습 전후 held-out loss를 기록하고 adapter를 저장합니다.
+학습 전후 held-out loss를 기록하고 adapter를 저장합니다. 수동 승인에 고정 평가 묶음을 연결하면 동일 질문의 정답 일치율도 비교합니다.
 loss 감소만으로 실용 성능이나 안전성이 검증된 것은 아니므로 별도 역할별 평가가 필요합니다.
 DPO/GRPO/자동 모델 배포는 아직 구현하지 않았습니다.
 
