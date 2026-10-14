@@ -25,10 +25,10 @@ class SemanticSearch:
         if not self.settings.embedding_model:
             raise HTTPException(503, "로컬 임베딩 모델이 설정되지 않았습니다. 키워드 검색은 사용할 수 있습니다.")
         url = urlsplit(self.settings.ollama_url)
-        if (url.scheme != "http" or url.hostname not in {"localhost", "127.0.0.1", "::1"}
+        if (url.scheme != "http" or url.hostname not in {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
                 or url.username or url.password or url.query or url.fragment
                 or url.path not in {"", "/"}):
-            raise HTTPException(503, "의미 검색은 HTTP 루프백 Ollama만 지원합니다.")
+            raise HTTPException(503, "의미 검색은 HTTP 로컬 또는 Docker 호스트 Ollama만 지원합니다.")
         if not query.strip():
             raise HTTPException(422, "검색어를 입력하세요.")
         if not sources:

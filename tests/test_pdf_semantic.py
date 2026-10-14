@@ -110,7 +110,9 @@ def test_pdf_parser_timeout_and_platform(signed_in, monkeypatch):
     assert upload_pdf(signed_in).status_code == 503
 
 
-def test_semantic_synonyms_without_keyword_match(signed_in):
+@pytest.mark.parametrize("host", ["localhost", "127.0.0.1", "[::1]", "host.docker.internal"])
+def test_semantic_synonyms_without_keyword_match(signed_in, host):
+    signed_in.app.state.settings.ollama_url = f"http://{host}:11434"
     did = document(signed_in)
     other = document(signed_in, "cooking soup")
     calls = configure(signed_in)
