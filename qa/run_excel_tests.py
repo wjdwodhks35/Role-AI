@@ -90,6 +90,17 @@ summary = {
     "results": results,
     "execution_order": plugin.started,
 }
+defects_path = ROOT / "qa/defects.json"
+if defects_path.exists():
+    defects = json.loads(defects_path.read_text(encoding="utf-8"))
+    defect_sheet = workbook["결함이력"]
+    defect_sheet.delete_rows(2, defect_sheet.max_row)
+    for defect in defects:
+        case_result = next(r for r in results if r["id"] == defect["case"])
+        defect_sheet.append([
+            defect["id"], defect["case"], defect["before"] + " / " + defect["evidence"],
+            defect["fix"], case_result["status"] + " / " + summary["run_url"],
+        ])
 for key in ["commit", "run_url", "utc", "ordered", "exit_code", "scenarios",
             "executions", "passed_scenarios"]:
     workbook["요약"].append([key, str(summary[key])])

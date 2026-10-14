@@ -1,0 +1,18 @@
+[
+  {
+    "id": "BUG-001",
+    "case": "UT-050",
+    "before": "동일 내용으로 수정해도 200; 활성 기억 중복 생성",
+    "evidence": "https://github.com/wjdwodhks35/Role-AI/actions/runs/38510187548",
+    "fix": "사용자·종류·프로젝트·내용 기준 활성 중복 확인 후 409; 변경 이력/버전 보존",
+    "verification": "전체 재검증 대기"
+  },
+  {
+    "id": "HARDEN-001",
+    "case": "UT-051",
+    "before": "최초 동시 저장 테스트는 통과; 경쟁 가능성 예방 보강",
+    "evidence": "https://github.com/wjdwodhks35/Role-AI/actions/runs/38510187548",
+    "fix": "SQLite BEGIN IMMEDIATE로 생성·추출·수정의 중복 확인과 쓰기 직렬화",
+    "verification": "전체 재검증 대기"
+  }
+]

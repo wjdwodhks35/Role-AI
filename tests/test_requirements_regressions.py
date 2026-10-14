@@ -1,4 +1,5 @@
 import json
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from role_ai.providers import ModelReply
@@ -16,6 +17,21 @@ def test_edit_cannot_create_duplicate_active_memory(signed_in):
     records = signed_in.get("/api/memories").json()
     assert sum(r["content"] == original["content"] for r in records) == 1
     assert next(r for r in records if r["id"] == other["id"])["revision"] == 1
+    # The rule must preserve separate project scopes and allow replacing expired memories.
+    separate = signed_in.patch("/api/memories/" + other["id"], json={
+        "content": original["content"], "kind": "feedback", "project": "separate",
+        "revision": 1,
+    })
+    assert separate.status_code == 200
+    expired = signed_in.patch("/api/memories/" + original["id"], json={
+        "content": original["content"], "kind": "feedback", "revision": 1,
+        "expires_at": time.time() - 1,
+    })
+    assert expired.status_code == 200
+    replacement = signed_in.patch("/api/memories/" + other["id"], json={
+        "content": original["content"], "kind": "feedback", "revision": 2,
+    })
+    assert replacement.status_code == 200
 
 
 def test_concurrent_identical_memory_requests_are_deduplicated(signed_in):
