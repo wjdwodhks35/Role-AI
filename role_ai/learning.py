@@ -11,7 +11,8 @@ from sqlalchemy import delete, select, update
 
 from role_ai.artifacts import ArtifactStore, canonical, digest, storage_lock
 from role_ai.huggingface import HuggingFaceClient
-from role_ai.models import DatasetSnapshot, TrainingJob
+from role_ai.models import BenchmarkSuite, DatasetSnapshot, TrainingJob
+from role_ai.quality import full_review, suite_hash
 from role_ai.providers import ProviderUnavailable
 from role_ai.training import model_fingerprint
 
@@ -79,6 +80,7 @@ class Approval(BaseModel):
     license_reviewed: bool
     privacy_reviewed: bool
     model_license_reviewed: bool
+    benchmark_id: str | None = Field(default=None, max_length=36)
     max_steps: int = Field(default=30, ge=1, le=100)
     max_length: int = Field(default=512, ge=64, le=1024)
 
@@ -248,7 +250,7 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
         item = snapshot(repo, uid, sid)
         if item.state in {"queued", "running"}:
             raise HTTPException(409, "학습 작업 중에는 검수를 변경할 수 없습니다.")
-        train, _, manifest = read_snapshot(item)
+        train, evaluation, manifest = read_snapshot(item)
         data_hash = item.data_hash
         repo.db.rollback()
         prompt = review_prompt(body.stage, train, manifest)
@@ -257,9 +259,13 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
                 result = await providers.get("openai").complete_for_user(
                     prompt, uid, True, body.allow_paid
                 )
+                decision = Decision.model_validate_json(result.text)
+                review_result = {**decision.model_dump(), "data_hash": data_hash,
+                                 "provider": result.provider, "model": result.model,
+                                 "scope": "three training samples", "billing_state": result.billing_state}
             else:
-                result = await providers.get("ollama").complete(prompt)
-            decision = Decision.model_validate_json(result.text)
+                review_result = await full_review(providers.get("ollama"), body.stage,
+                                                  train, evaluation, manifest, data_hash)
         except (ProviderUnavailable, ValueError) as exc:
             reason = str(exc) if isinstance(exc, ProviderUnavailable) else "검수 응답 형식이 올바르지 않습니다."
             raise HTTPException(503, reason) from None
@@ -269,9 +275,7 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
             raise HTTPException(409, "데이터 또는 작업 상태가 변경됐습니다.")
         revision = item.revision
         reviews = json.loads(item.reviews)
-        reviews[body.stage] = {**decision.model_dump(), "data_hash": data_hash,
-                               "provider": result.provider, "model": result.model,
-                               "scope": "three training samples", "billing_state": result.billing_state}
+        reviews[body.stage] = review_result
         changed = repo.db.execute(update(DatasetSnapshot).where(
             DatasetSnapshot.id == sid, DatasetSnapshot.revision == revision
         ).values(reviews=canonical(reviews), state="reviewed", plan=None, approval_hash=None,
@@ -300,6 +304,22 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
                    and reviews[stage]["data_hash"] == item.data_hash
                    for stage in ["teacher", "reviewer", "orchestrator"]):
             raise HTTPException(409, "Teacher·Reviewer·오케스트레이터 검수를 먼저 완료하세요.")
+        if any(reviews[stage].get("scope") != "all_selected_train_and_eval_samples"
+               for stage in ["teacher", "reviewer"]):
+            raise HTTPException(409, "선택된 전체 샘플의 로컬 검수를 다시 완료하세요.")
+        benchmark = None
+        if body.benchmark_id:
+            suite = repo.db.scalar(select(BenchmarkSuite).where(
+                BenchmarkSuite.id == body.benchmark_id, BenchmarkSuite.user_id == user.id))
+            if not suite:
+                raise HTTPException(404, "평가 질문 묶음을 찾을 수 없습니다.")
+            cases = json.loads(suite.cases)
+            train_rows, eval_rows, _ = read_snapshot(item)
+            from role_ai.quality import normalize
+            if any(normalize(c["prompt"]) in {normalize(r["prompt"]) for r in train_rows + eval_rows}
+                   for c in cases):
+                raise HTTPException(422, "평가 질문은 학습 데이터와 별도로 작성하세요.")
+            benchmark = {"id": suite.id, "cases": cases, "digest": suite_hash(cases)}
         if not settings.training_base_model_path or not re.fullmatch(
             r"[a-f0-9]{40}", settings.training_base_model_revision
         ):
@@ -310,7 +330,7 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
             raise HTTPException(503, str(exc)) from None
         plan = {"base_model_fingerprint": fingerprint, **body.model_dump(), "method": "sft_qlora", "base_model_revision":
                 settings.training_base_model_revision, "base_model_path": settings.training_base_model_path,
-                "rank": 8, "batch_size": 1, "gradient_accumulation": 8}
+                "rank": 8, "batch_size": 1, "gradient_accumulation": 8, "benchmark": benchmark}
         approval_hash = digest({"plan": plan, "reviews": reviews, "data_hash": item.data_hash})
         changed = repo.db.execute(update(DatasetSnapshot).where(
             DatasetSnapshot.id == sid, DatasetSnapshot.revision == item.revision

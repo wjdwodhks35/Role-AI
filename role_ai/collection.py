@@ -16,6 +16,7 @@ from role_ai.config import Settings
 from role_ai.database import Base, build_database
 from role_ai.huggingface import HuggingFaceClient
 from role_ai.learning import Decision, HFInput, LICENSES, review_prompt
+from role_ai.quality import full_review
 from role_ai.models import AutoApprovalPolicy, CollectionPlan, DatasetSnapshot, User
 from role_ai.providers import OllamaProvider, ProviderManager
 
@@ -200,14 +201,18 @@ async def collect(settings, factory, providers, hf, uid, topic):
     except BaseException:
         store.delete(uid, sid)
         raise
-    train, _, _ = store.read(uid, sid, data_hash)
+    train, evaluation, _ = store.read(uid, sid, data_hash)
     reviews = {}
     for stage in ["teacher", "reviewer", "orchestrator"]:
-        result = await local.complete(review_prompt(stage, train, manifest))
-        decision = Decision.model_validate_json(result.text)
-        reviews[stage] = {**decision.model_dump(), "provider": result.provider,
-                          "model": result.model, "data_hash": data_hash,
-                          "scope": "three training samples", "billing_state": None}
+        if stage in {"teacher", "reviewer"}:
+            reviews[stage] = await full_review(local, stage, train, evaluation, manifest, data_hash)
+            decision = Decision.model_validate(reviews[stage])
+        else:
+            result = await local.complete(review_prompt(stage, train, manifest))
+            decision = Decision.model_validate_json(result.text)
+            reviews[stage] = {**decision.model_dump(), "provider": result.provider,
+                              "model": result.model, "data_hash": data_hash,
+                              "scope": "three training samples", "billing_state": None}
         with factory() as db:
             stored = db.get(DatasetSnapshot, sid)
             if stored is None:

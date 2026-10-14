@@ -374,6 +374,7 @@ $("learning-close").addEventListener("click", () => $("learning-dialog").close()
 async function loadLearning() {
   await loadCollection();
   await loadAutoPolicy();
+  await loadLifecycle();
   const status = await api("/api/learning/status");
   $("learning-status").textContent = "SFT + QLoRA · GPU 실행 " +
     (status.training_enabled ? "활성화" : "비활성화") +
@@ -403,7 +404,7 @@ async function loadLearning() {
       const result = await api("/api/learning/datasets/" + dataset.id + "/samples");
       preview.textContent = JSON.stringify(result, null, 2);
     }), preview);
-    card.append(actionButton("로컬 Teacher·Reviewer 검수", async () => {
+    card.append(actionButton("전체 선택 샘플 Teacher·Reviewer 검수", async () => {
       for (const stage of ["teacher", "reviewer"]) {
         await api("/api/learning/datasets/" + dataset.id + "/review", {
           method: "POST", body: JSON.stringify({ stage })
@@ -432,7 +433,8 @@ async function loadLearning() {
       await api("/api/learning/datasets/" + dataset.id + "/approve", {
         method: "POST", body: JSON.stringify({
           data_hash: dataset.data_hash, license_reviewed: true, privacy_reviewed: true,
-          model_license_reviewed: true, max_steps: 30, max_length: 512
+          model_license_reviewed: true, max_steps: 30, max_length: 512,
+          benchmark_id: $("benchmark-select").value || null
         })
       });
       await loadLearning();
@@ -714,4 +716,62 @@ $("gpu-form").addEventListener("submit", async event => {
     await loadGpuSettings();
   } catch (error) { notify(error.message); }
   finally { button.disabled = false; }
+});
+
+
+let candidateRevision = 0;
+async function loadLifecycle() {
+  const selection = $("benchmark-select").value;
+  const suites = await api("/api/learning/benchmarks");
+  $("benchmark-select").replaceChildren();
+  const none = document.createElement("option"); none.value = ""; none.textContent = "선택 안 함 · loss만 평가";
+  $("benchmark-select").append(none);
+  for (const suite of suites) {
+    const option = document.createElement("option"); option.value = suite.id;
+    option.textContent = suite.name + " · " + suite.cases.length + "문항";
+    $("benchmark-select").append(option);
+  }
+  if (suites.some(s => s.id === selection)) $("benchmark-select").value = selection;
+  const versions = await api("/api/learning/versions");
+  candidateRevision = versions.selection.revision;
+  $("candidate-state").textContent = "현재 배포 후보: " + (versions.selection.job_id || "없음") +
+    " · 기록 버전 " + candidateRevision + " · 채팅 모델 적용 없음";
+  $("candidate-versions").replaceChildren();
+  for (const version of versions.versions) {
+    const card = document.createElement("article"); card.className = "management-card";
+    const details = document.createElement("pre"); details.textContent = version.job_id + "\n" +
+      JSON.stringify(version.report, null, 2);
+    card.append(details, actionButton("검증 후 배포 후보 선택", async () => {
+      await api("/api/learning/versions/select", { method: "POST",
+        body: JSON.stringify({ revision: candidateRevision, job_id: version.job_id }) });
+      await loadLifecycle();
+    })); $("candidate-versions").append(card);
+  }
+  const dashboard = await api("/api/learning/dashboard");
+  $("unified-jobs").replaceChildren();
+  for (const job of dashboard.entries) {
+    const card = document.createElement("pre");
+    card.textContent = job.kind + " · " + job.state + " · " + job.label + "\n" +
+      JSON.stringify(job.report || job.history || [], null, 2);
+    $("unified-jobs").append(card);
+  }
+}
+$("benchmark-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = event.submitter; button.disabled = true;
+  try {
+    await api("/api/learning/benchmarks", { method: "POST", body: JSON.stringify({
+      name: $("benchmark-name").value, cases: JSON.parse($("benchmark-cases").value)
+    }) });
+    await loadLifecycle();
+  } catch (error) { notify(error.message); }
+  finally { button.disabled = false; }
+});
+$("lifecycle-refresh").addEventListener("click", () => loadLifecycle().catch(e => notify(e.message)));
+$("candidate-rollback").addEventListener("click", async () => {
+  try {
+    await api("/api/learning/versions/rollback", { method: "POST",
+      body: JSON.stringify({ revision: candidateRevision }) });
+    await loadLifecycle();
+  } catch (error) { notify(error.message); }
 });
