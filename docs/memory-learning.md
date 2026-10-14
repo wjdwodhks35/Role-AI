@@ -92,6 +92,8 @@ GPT에 보내는 자료는 학습 미리보기 3개와 manifest이며 평가셋�
 데이터 해시·모델 파일·계획·검수 결과를 결합한 approval hash를 Worker가 다시 검증합니다.
 선택 가능한 대상 Skill은 Developer/Meeting/Professor/Counselor입니다.
 현재 UI의 기본 학습 대상은 Developer, API에서는 target_skill로 지정합니다.
+Trainer는 선택한 역할의 system prompt를 대화 샘플에 적용합니다.
+최종 승인 전 UI의 전체 선택 샘플 확인 버튼으로 정제된 train/eval을 직접 확인할 수 있습니다.
 의료 전문 모델의 검증·임상 판단은 이 학습 기능의 범위 밖입니다.
 
 ## 학습 실행: SFT + QLoRA
@@ -104,6 +106,7 @@ Mock trainer 테스트는 승인/큐/파일 검증 흐름만 검증합니다.
 먼저 기반 모델을 별도로 확보하고 라이선스를 확인합니다.
 HF 모델 다운로드는 Worker가 자동 수행하지 않습니다.
 Safetensors 가중치, tokenizer와 대화 템플릿을 갖춘 로컬 디렉터리가 필요합니다.
+HF cache의 심볼릭 링크를 그대로 쓰지 말고 독립된 실제 파일 디렉터리를 준비하세요.
 
     python -m pip install -e ".[training]"
 

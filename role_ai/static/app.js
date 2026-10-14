@@ -366,6 +366,11 @@ async function loadLearning() {
     const link = document.createElement("a"); link.textContent = "데이터 카드 내보내기";
     link.href = "/api/learning/datasets/" + dataset.id + "/card"; link.download = "dataset-card.md";
     card.append(title, stats, link, reviews);
+    const preview = document.createElement("pre");
+    card.append(actionButton("정규화된 전체 선택 샘플 확인", async () => {
+      const result = await api("/api/learning/datasets/" + dataset.id + "/samples");
+      preview.textContent = JSON.stringify(result, null, 2);
+    }), preview);
     card.append(actionButton("로컬 Teacher·Reviewer 검수", async () => {
       for (const stage of ["teacher", "reviewer"]) {
         await api("/api/learning/datasets/" + dataset.id + "/review", {

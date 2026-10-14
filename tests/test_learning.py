@@ -102,6 +102,9 @@ def test_documents_compression_split_and_purge(learning_app):
     assert "synthetic test data" in client.get(
         "/api/learning/datasets/" + record["id"] + "/card").text
     assert calls == []
+    preview = client.get("/api/learning/datasets/" + record["id"] + "/samples").json()
+    assert len(preview["train"]) == 10 and len(preview["eval"]) == 2
+    assert preview["data_hash"] == record["data_hash"]
     assert client.delete("/api/learning/datasets/" + record["id"]).status_code == 204
     assert not store.path(uid, record["id"]).exists()
 

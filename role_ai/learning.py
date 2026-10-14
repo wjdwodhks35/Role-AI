@@ -227,6 +227,12 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
         return Response("\n".join(lines), media_type="text/markdown",
                         headers={"Content-Disposition": 'attachment; filename="dataset-card.md"'})
 
+    @router.get("/datasets/{sid}/samples")
+    def samples(sid: str, user=Depends(owner), repo=Depends(repository)):
+        item = snapshot(repo, user.id, sid)
+        train, evaluation, _ = read_snapshot(item)
+        return {"data_hash": item.data_hash, "train": train, "eval": evaluation}
+
     @router.post("/datasets/{sid}/review/quote")
     def quote(sid: str, user=Depends(owner), repo=Depends(repository)):
         item = snapshot(repo, user.id, sid)

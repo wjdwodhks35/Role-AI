@@ -22,7 +22,7 @@ def model_fingerprint(directory):
     if not root.is_dir():
         raise ValueError("로컬 기반 모델 폴더가 필요합니다.")
     files = sorted(p for p in root.rglob("*") if p.is_file())
-    selected = [p for p in files if p.suffix in {".json", ".safetensors", ".model", ".txt", ".tiktoken"}]
+    selected = [p for p in files if p.suffix in {".json", ".safetensors", ".model", ".txt", ".tiktoken", ".md", ".jinja", ".jinja2"}]
     if not any(p.suffix == ".safetensors" for p in selected):
         raise ValueError("Safetensors 기반 모델이 필요합니다.")
     digestor = hashlib.sha256()
@@ -56,8 +56,14 @@ def run_sft(plan, train, evaluation, output):
         tokenizer.pad_token = tokenizer.eos_token
     if not tokenizer.chat_template:
         raise ValueError("대화 템플릿을 제공하는 기반 모델이 필요합니다.")
+    from role_ai.skills import system_prompt
+    role_prompt = (
+        "회의 원문을 근거로 주요 주제, 결정, Action Item을 정리하세요. 없는 사실을 만들지 마세요."
+        if plan["target_skill"] == "meeting" else system_prompt(plan["target_skill"])
+    )
     def clean(records):
-        prepared = [{"prompt": [{"role": "user", "content": r["prompt"]}],
+        prepared = [{"prompt": [{"role": "system", "content": role_prompt},
+                               {"role": "user", "content": r["prompt"]}],
                      "completion": [{"role": "assistant", "content": r["completion"]}]}
                     for r in records]
         for row in prepared:
