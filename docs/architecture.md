@@ -16,7 +16,7 @@ OpenClawGatewayAdapter는 로컬 소유자용 HTTP 대화와 연결 테스트를
 Role-AI는 인증, 데이터 소유권, 기억/RAG, 권한, 작업 상태를 관리합니다.
 OpenClaw는 계획과 Skill/Tool 선택을 담당합니다.
 ProviderManager는 동일한 complete/probe 계약으로 모델 교체를 지원합니다.
-현재 OpenAI와 vLLM은 예약된 구현이며 모델 라우팅/비용 한도는 아직 없습니다.
+OpenAI는 공식 Responses API와 예산 예약/정산을 구현했고, vLLM 직접 Provider와 자동 라우팅은 후속 기능입니다.
 Skill은 한 공유 모델의 프롬프트를 바꾸므로 별도 대형 모델을 역할마다 상주시킬 필요가 없습니다.
 선택은 Phase 1에서 사용자가 직접 수행하며 자동 Skill 선택은 후속 기능입니다.
 
@@ -31,7 +31,7 @@ Skill은 한 공유 모델의 프롬프트를 바꾸므로 별도 대형 모델�
   Phase 1은 POST /api/chat의 비스트리밍 응답을 사용합니다.
   Provider 오류/타임아웃은 정상 응답으로 대체하지 않습니다.
 - [OpenAI API reference](https://platform.openai.com/docs/api-reference/responses):
-  OpenAI 실제 연결은 다음 기능 PR에서 공식 API 계약을 다시 확인하고 구현합니다.
+  OpenAI Provider는 공식 Responses 계약으로 구현하며 실제 키와의 연결은 별도 검증합니다.
   ChatGPT 웹 구독을 API 무료 사용량으로 간주하지 않으며 세션 쿠키 우회는 사용하지 않습니다.
 
 ## 데이터 경계

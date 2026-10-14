@@ -50,3 +50,18 @@ class Message(Base):
     skill: Mapped[str] = mapped_column(String(20), default="assistant")
     sequence: Mapped[int]
     created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class ApiUsage(Base):
+    __tablename__ = "api_usage"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    model: Mapped[str] = mapped_column(String(100))
+    state: Mapped[str] = mapped_column(String(20), default="reserved", index=True)
+    input_rate: Mapped[str] = mapped_column(String(40))
+    output_rate: Mapped[str] = mapped_column(String(40))
+    reserved_microusd: Mapped[int]
+    charged_microusd: Mapped[int]
+    input_tokens: Mapped[int | None]
+    output_tokens: Mapped[int | None]
+    created_at: Mapped[float] = mapped_column(default=time.time, index=True)

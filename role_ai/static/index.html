@@ -58,6 +58,11 @@
       </section>
       <p id="connection-state" class="muted">모델 연결을 확인해 주세요.</p>
       <section id="messages" class="messages" aria-label="대화 내용" aria-live="polite"></section>
+      <section id="paid-approval" hidden>
+        <p id="paid-quote" class="muted"></p>
+        <label><input id="paid-consent" type="checkbox">
+          이번 메시지의 외부 전송 및 유료 API 사용에 동의합니다.</label>
+      </section>
       <form id="chat-form" class="composer">
         <label for="message">메시지</label>
         <textarea id="message" rows="3" maxlength="4000"
@@ -72,9 +77,11 @@
       <dl>
         <dt>대화 엔진</dt><dd id="current-engine">기본 비서</dd>
         <dt>OpenClaw</dt><dd id="gateway-status">비활성화</dd>
-        <dt>유료 API 호출</dt><dd>비활성화</dd>
+        <dt>유료 API 호출</dt><dd id="paid-status">비활성화</dd>
         <dt>PC 및 외부 도구</dt><dd>비활성화</dd>
       </dl>
+      <button id="usage-button" hidden>API 사용량 조회</button>
+      <div id="usage-history"></div>
       <h3>다음 단계</h3>
       <p>OpenClaw 연동 · API 설정<br>Memory / RAG · 권한 승인<br>작업 큐 · 회의 업로드</p>
       <p class="muted">아직 제공되지 않는 기능은 실행되지 않습니다. Mock은 실제 AI 응답이 아닌 테스트용입니다.</p>

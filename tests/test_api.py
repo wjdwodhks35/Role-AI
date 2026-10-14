@@ -118,7 +118,7 @@ def test_unimplemented_provider_never_fakes_success(signed_in):
     conversation_id = create_conversation(signed_in)
     response = signed_in.post(f"/api/conversations/{conversation_id}/chat",
                               json={"content": "hello", "provider": "openai"})
-    assert response.status_code == 503
+    assert response.status_code == 403
     assert signed_in.get(f"/api/conversations/{conversation_id}/messages").json() == []
     status = signed_in.get("/api/status").json()
     assert status["openclaw"] == "disabled"
@@ -153,4 +153,4 @@ def test_auth_rate_limit(client):
 def test_provider_probe(signed_in):
     response = signed_in.post("/api/providers/mock/test")
     assert response.json()["state"] == "simulated"
-    assert signed_in.post("/api/providers/openai/test").status_code == 503
+    assert signed_in.post("/api/providers/openai/test").status_code == 403
