@@ -57,6 +57,15 @@ def test_gateway_contract_and_stable_session(gateway_settings):
     assert adapter.session_key(context, "doctor") != adapter.session_key(context, "developer")
     assert adapter.session_key(AssistantContext("owner", "other", True), "developer") != payloads[0]["user"]
 
+    reply = asyncio.run(adapter.reply(context, [{"role": "user", "content": "테스트 작성"}],
+                                      "ollama", "code_tester"))
+    tester = json.loads(requests[-1].content)
+    assert reply.provider == "openclaw"
+    assert tester["tools"] == [] and tester["tool_choice"] == "none"
+    assert tester["user"] != payloads[0]["user"]
+    assert "미실행" in tester["messages"][0]["content"]
+    assert "정상·경계·예외·회귀" in tester["messages"][0]["content"]
+
 
 @pytest.mark.parametrize("unsafe", ["tools", "paid", "fallback", "remote", "disabled", "public", "nonowner", "missing"])
 def test_gateway_guards_before_network(gateway_settings, unsafe):
