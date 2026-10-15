@@ -14,7 +14,7 @@
 | 비밀번호 해시 / 만료 세션 / CSRF / 소유권 검사 / 요청 크기 제한 | 구현 |
 | Ollama 대화, 모델 설치 확인, 타임아웃, 안전한 오류 표시 | 구현, 실제 사용자 PC 연결은 별도 검증 필요 |
 | Mock Provider | 명시적 로컬 테스트 모드만 허용, 화면에 테스트 표시 |
-| Professor / Developer / Doctor / Counselor | 공유 모델의 System Prompt 기반 선택형 Skill |
+| Professor / Developer / 코드 테스트 / Doctor / Counselor | 공유 모델의 System Prompt 기반 선택형 Skill |
 | ModelProvider / AssistantEngine / OpenClaw 어댑터 인터페이스 | 구현 |
 | OpenAI Responses API | 소유자용 구현, 기본 비활성화, 실제 키 호출 미검증 |
 | OpenAI 비용 정책 / 사용량 / 호출 동의 | 서버 단가·예산 설정, DB 예약/정산, 화면 구현 |

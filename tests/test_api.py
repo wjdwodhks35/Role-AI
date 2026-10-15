@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from role_ai.main import COOKIE
 from role_ai.repositories import Repository
 from role_ai.security import token_hash
@@ -97,10 +99,12 @@ def test_user_isolation(signed_in):
                        json={"content": "steal"}).status_code == 404
 
 
-def test_chat_records_real_metadata_and_marks_mock(signed_in):
+@pytest.mark.parametrize("skill", ["developer", "code_tester"])
+def test_chat_records_real_metadata_and_marks_mock(signed_in, skill):
+    assert {s["id"]: s["label"] for s in signed_in.get("/api/status").json()["skills"]}["code_tester"] == "코드 테스트"
     conversation_id = create_conversation(signed_in)
     response = signed_in.post(f"/api/conversations/{conversation_id}/chat", json={
-        "content": "<script>alert(1)</script>", "skill": "developer"
+        "content": "<script>alert(1)</script>", "skill": skill
     })
     assert response.status_code == 200
     reply = response.json()
@@ -111,7 +115,7 @@ def test_chat_records_real_metadata_and_marks_mock(signed_in):
     assert [m["role"] for m in messages] == ["user", "assistant"]
     assert messages[0]["content"] == "<script>alert(1)</script>"
     assert messages[1]["provider"] == "mock"
-    assert messages[1]["skill"] == "developer"
+    assert messages[1]["skill"] == skill
 
 
 def test_unimplemented_provider_never_fakes_success(signed_in):
