@@ -51,3 +51,23 @@ jobs:
         if: failure()
       - run: docker compose down --volumes
         if: always()
+
+  code-execution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[test]"
+      - name: Prepare explicit CI-only Python runtime
+        run: |
+          docker pull python:3.12-slim
+          digest=$(docker image inspect python:3.12-slim --format '{{index .RepoDigests 0}}')
+          echo "ROLE_AI_CODE_EXECUTION_IMAGE=python:3.12-slim@${digest#*@}" >> "$GITHUB_ENV"
+      - run: python qa/check_code_execution.py
+      - name: Remove only this CI job's disposable test containers
+        if: always()
+        run: |
+          ids=$(docker ps -aq --filter label=role-ai.code-execution=true)
+          if [ -n "$ids" ]; then docker rm -fv $ids; fi

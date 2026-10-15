@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     hf_download_enabled: bool = False
     hf_max_scan_bytes: int = Field(default=2097152, ge=1024, le=10485760)
     hf_token: SecretStr = SecretStr("")
+    code_execution_enabled: bool = False
+    code_execution_image: str = ""
+    code_execution_socket: str = "/var/run/docker.sock"
+    code_execution_timeout_seconds: int = Field(default=10, ge=1, le=30)
     training_enabled: bool = False
     training_base_model_path: str = ""
     training_base_model_revision: str = ""
