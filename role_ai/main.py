@@ -16,6 +16,7 @@ from role_ai.auto_approval import policy_router
 from role_ai.billing import BillingLedger
 from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.collection import collection_router
+from role_ai.code_execution import execution_router
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
 from role_ai.documents import DocumentRepository, documents_router
@@ -130,6 +131,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
 
     app.include_router(lifecycle_router(authenticated, repository, settings))
     app.include_router(gpu_router(authenticated, settings))
+    app.include_router(execution_router(authenticated, settings))
     app.include_router(policy_router(authenticated, repository, settings, providers, factory))
     app.include_router(collection_router(authenticated, repository, settings))
     app.include_router(documents_router(authenticated, repository, semantic))
@@ -223,6 +225,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
                 item.update(usable=False, paid_calls=False, state="disabled")
         return {
             "resource_settings_available": actor[0].is_owner and settings.mode == "local",
+            "code_execution_available": actor[0].is_owner and settings.mode == "local" and settings.code_execution_enabled,
             "semantic_available": bool(settings.embedding_model),
             "phase": 1, "assistant_engine": "provider_fallback",
             "learning_available": actor[0].is_owner and settings.mode == "local",

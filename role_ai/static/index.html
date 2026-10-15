@@ -56,6 +56,7 @@
         <label>프로젝트<input id="project" maxlength="80" placeholder="공통"></label>
         <label>전문 Skill<select id="skill"></select></label>
         <button id="probe">연결 테스트</button>
+        <button id="code-open" hidden>코드 테스트 실행</button>
         <button id="gpu-open" hidden>GPU 메모리 설정</button>
         <button id="documents-open">문서 관리</button>
         <button id="memory-open">기억 관리</button>
@@ -92,6 +93,27 @@
       <p class="muted">아직 제공되지 않는 기능은 실행되지 않습니다. Mock은 실제 AI 응답이 아닌 테스트용입니다.</p>
     </section>
   </div>
+  <dialog id="code-dialog">
+    <div class="dialog-head"><h2>Python 코드 테스트 실행</h2><button id="code-close">닫기</button></div>
+    <p class="muted">Python 표준 라이브러리 unittest 전용입니다. 코드는 submission 모듈로 가져오세요.
+      파일 업로드·패키지 설치·인터넷·GPU 사용은 지원하지 않습니다. 매번 현재 입력을 승인해야 실행됩니다.</p>
+    <form id="code-form" class="management-form">
+      <label>실행할 코드 (submission.py)<textarea id="code-source" rows="8" maxlength="16000" required spellcheck="false">def add(a, b):
+    return a + b</textarea></label>
+      <label>테스트 (test_submission.py)<textarea id="code-tests" rows="10" maxlength="16000" required spellcheck="false">import unittest
+from submission import add
+
+class AddTests(unittest.TestCase):
+    def test_add(self):
+        self.assertEqual(add(2, 3), 5)</textarea></label>
+      <label><input id="code-consent" type="checkbox" required>현재 코드와 테스트를 격리 컨테이너에서 실행합니다.</label>
+      <button id="code-run" type="submit">승인한 테스트 실행</button>
+    </form>
+    <pre id="code-result" role="status" aria-live="polite"></pre>
+    <button id="code-attach" disabled>현재 대화 입력에 결과 첨부</button>
+    <p class="muted">결과는 이 화면에만 표시됩니다. 대화 첨부 후 보내기를 눌러야 모델에 전달됩니다.
+      종료 코드 0만으로 테스트의 충분성이나 정확성이 보장되지는 않습니다.</p>
+  </dialog>
   <dialog id="gpu-dialog">
     <div class="dialog-head"><h2>GPU 메모리 설정</h2><button id="gpu-close">닫기</button></div>
     <p id="gpu-measurement" class="muted"></p>
