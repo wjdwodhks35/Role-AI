@@ -13,7 +13,8 @@ from sqlalchemy import func, select, text
 
 from role_ai.artifacts import ArtifactStore, canonical
 from role_ai.config import Settings
-from role_ai.database import Base, build_database
+from role_ai.database import build_database
+from role_ai.migrations import initialize_database
 from role_ai.huggingface import HuggingFaceClient
 from role_ai.learning import Decision, HFInput, LICENSES, review_prompt
 from role_ai.quality import full_review
@@ -298,7 +299,7 @@ def main():
     args = parser.parse_args()
     settings = Settings()
     engine, factory = build_database(settings.database_url)
-    Base.metadata.create_all(engine)
+    initialize_database(engine)
     from role_ai.billing import BillingLedger
     providers = ProviderManager(settings, ledger=BillingLedger(settings, factory))
     hf = HuggingFaceClient(settings)

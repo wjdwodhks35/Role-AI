@@ -10,7 +10,8 @@ from sqlalchemy import select, update
 from role_ai.artifacts import ArtifactStore, canonical, digest, storage_lock
 from role_ai.config import Settings
 from role_ai.gpu_resources import GpuBudgetError, configure_allocator, preflight
-from role_ai.database import Base, build_database
+from role_ai.database import build_database
+from role_ai.migrations import initialize_database
 from role_ai.models import DatasetSnapshot, TrainingJob
 
 
@@ -154,7 +155,7 @@ def run_one(settings, trainer=run_sft):
         raise ValueError("ROLE_AI_TRAINING_ENABLED가 false입니다. GPU 학습을 실행하지 않습니다.")
     store = ArtifactStore(settings)
     engine, factory = build_database(settings.database_url)
-    Base.metadata.create_all(engine)
+    initialize_database(engine)
     try:
         with storage_lock(store.root):
             with factory() as db:
