@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 
 from role_ai.artifacts import ArtifactStore, canonical
+from role_ai.workers import JobCancelled, WorkerMonitor
+from role_ai.models import WorkerControl
 from role_ai.config import Settings
 from role_ai.database import build_database
 from role_ai.migrations import initialize_database
@@ -111,7 +113,11 @@ def collection_router(authenticated, repository, settings):
     return router
 
 
-async def collect(settings, factory, providers, hf, uid, topic):
+async def collect(settings, factory, providers, hf, uid, topic, monitor=None):
+    def stage(name):
+        if monitor:
+            monitor.stage(name)
+    stage("checking_local_model")
     local = providers.get("ollama")
     if not isinstance(local, OllamaProvider):
         raise ValueError("A real local Ollama provider is required")
@@ -127,6 +133,7 @@ async def collect(settings, factory, providers, hf, uid, topic):
         if (not isinstance(info, dict) or info.get("remote_host") or info.get("remote_model")
                 or "completion" not in info.get("capabilities", [])):
             raise ValueError("Local completion model required")
+    stage("discovering_datasets")
     candidates = await hf.search(topic)
     with factory() as db:
         existing = list(db.scalars(select(DatasetSnapshot.manifest).where(
@@ -184,6 +191,7 @@ async def collect(settings, factory, providers, hf, uid, topic):
             or mapping.completion_field not in fields or mapping.prompt_field == mapping.completion_field):
         raise ValueError("Invalid actual field mapping")
     request = HFInput(**{**request.model_dump(), **mapping.model_dump()})
+    stage("sampling_jsonl")
     rows, source = await hf.sample(
         request.repo_id, request.revision, request.filename, request.rows,
         request.prompt_field, request.completion_field)
@@ -191,6 +199,7 @@ async def collect(settings, factory, providers, hf, uid, topic):
     source["topic"] = topic
     sid = str(uuid4())
     store = ArtifactStore(settings)
+    stage("saving_snapshot")
     manifest, data_hash = store.create(uid, sid, rows, source)
     # Persist first: a failed local review must not leave untracked files.
     item = DatasetSnapshot(id=sid, user_id=uid, name=topic,
@@ -205,6 +214,8 @@ async def collect(settings, factory, providers, hf, uid, topic):
     train, evaluation, _ = store.read(uid, sid, data_hash)
     reviews = {}
     for stage in ["teacher", "reviewer", "orchestrator"]:
+        if monitor:
+            monitor.stage("review_" + stage)
         if stage in {"teacher", "reviewer"}:
             reviews[stage] = await full_review(local, stage, train, evaluation, manifest, data_hash)
             decision = Decision.model_validate(reviews[stage])
@@ -226,6 +237,8 @@ async def collect(settings, factory, providers, hf, uid, topic):
     with factory() as db:
         policy = db.get(AutoApprovalPolicy, uid)
         enabled = bool(policy and policy.enabled)
+    if monitor:
+        monitor.stage("checking_auto_approval")
     if enabled and all(reviews.get(stage, {}).get("verdict") == "pass" for stage in ["teacher", "reviewer"]):
         from role_ai.auto_approval import auto_approve
         try:
@@ -238,7 +251,19 @@ async def collect(settings, factory, providers, hf, uid, topic):
                       "local_orchestrator": "three training samples"}, "training": "not_started"}
 
 
-async def run_one(settings, factory, providers, hf, now=None):
+async def run_one(settings, factory, providers, hf, now=None, monitor=None):
+    if settings.mode != 'local' or not settings.hf_download_enabled:
+        raise ValueError('Local mode and HF access must be enabled')
+    if monitor is None:
+        with WorkerMonitor(settings, 'collection') as owned:
+            return await run_one(settings, factory, providers, hf, now, owned)
+    try:
+        return await _run_one(settings, factory, providers, hf, now, monitor)
+    finally:
+        monitor.finish_job()
+
+
+async def _run_one(settings, factory, providers, hf, now, monitor):
     """One global collector at a time. Attempts count even on failure/crash."""
     if settings.mode != "local" or not settings.hf_download_enabled:
         raise ValueError("Local mode and HF access must be enabled")
@@ -275,21 +300,34 @@ async def run_one(settings, factory, providers, hf, now=None):
             item.runs += 1
             item.next_run = now + item.interval_hours * 3600
             db.commit()
+        monitor.start_job(pid, uid)
         try:
+            monitor.stage('starting_collection')
             async with asyncio.timeout(600):
-                result = await collect(settings, factory, providers, hf, uid, topic)
+                result = await collect(settings, factory, providers, hf, uid, topic, monitor)
+            monitor.check_cancel()
+        except JobCancelled:
+            result = {'state': 'cancelled', 'reason': '사용자 취소 또는 Worker 종료 요청', 'training': 'not_started'}
         except (Exception, TimeoutError):
             result = {"state": "failed", "reason": "수집·정제·로컬 검수에 실패했습니다. 설정과 데이터를 확인하세요.",
                       "training": "not_started"}
         with factory() as db:
+            db.execute(text('BEGIN IMMEDIATE'))
             item = db.get(CollectionPlan, pid)
+            control = db.get(WorkerControl, ('collection', pid))
+            if monitor.stopping.is_set() or (control and control.cancel_requested):
+                result = {'state': 'cancelled', 'reason': '사용자 취소 또는 Worker 종료 요청', 'training': 'not_started'}
             history = json.loads(item.history)
             history.append({**result, "time": now})
             item.history, item.state = canonical(history[-30:]), "waiting"
-            if item.runs >= item.max_runs:
+            if result["state"] == "cancelled":
+                item.enabled = False
+                item.state = "cancelled"
+            elif item.runs >= item.max_runs:
                 item.enabled = False
                 item.state = "completed"
             db.commit()
+        monitor.record_result(result["state"], result)
         return {"plan_id": pid, **result}
 
 
@@ -304,11 +342,13 @@ def main():
     providers = ProviderManager(settings, ledger=BillingLedger(settings, factory))
     hf = HuggingFaceClient(settings)
     try:
-        while True:
-            print(canonical(asyncio.run(run_one(settings, factory, providers, hf))), flush=True)
-            if args.once:
-                break
-            time.sleep(60)
+        with WorkerMonitor(settings, 'collection') as monitor:
+            monitor.install_signals()
+            while not monitor.stopping.is_set():
+                print(canonical(asyncio.run(run_one(settings, factory, providers, hf, monitor=monitor))), flush=True)
+                if args.once:
+                    break
+                monitor.stopping.wait(60)
     finally:
         engine.dispose()
 

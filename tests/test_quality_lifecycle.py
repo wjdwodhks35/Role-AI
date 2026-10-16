@@ -131,7 +131,7 @@ def test_dashboard_no_worker_or_percent_claim(learning_app):
     _, job = queued(client)
     result = client.get("/api/learning/dashboard").json()
     assert result["counts"]["queued"] == 1 and result["entries"][0]["id"] == job["id"]
-    assert result["worker_connectivity"] == "not_measured" and result["progress_percent"] is None
+    assert result["worker_connectivity"] == "heartbeat" and result["workers"] == [] and result["progress_percent"] is None
 
 
 def candidate(client, settings):

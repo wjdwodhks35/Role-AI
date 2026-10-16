@@ -61,6 +61,7 @@
         <button id="documents-open">문서 관리</button>
         <button id="memory-open">기억 관리</button>
         <button id="learning-open">학습 데이터</button>
+        <button id="workers-open" hidden>Worker 관리</button>
       </section>
       <p id="connection-state" class="muted">모델 연결을 확인해 주세요.</p>
       <section id="messages" class="messages" aria-label="대화 내용" aria-live="polite"></section>
@@ -93,6 +94,17 @@
       <p class="muted">아직 제공되지 않는 기능은 실행되지 않습니다. Mock은 실제 AI 응답이 아닌 테스트용입니다.</p>
     </section>
   </div>
+  <dialog id="workers-dialog">
+    <div class="dialog-head"><h2>Worker 관리</h2><button id="workers-close">닫기</button></div>
+    <p class="muted">5초 heartbeat · 20초가 지나면 오프라인/진행률 미확인. 단계 사이 취소이므로
+      진행 중인 모델 호출이나 로딩이 즉시 종료되지는 않습니다. 프로세스 시작은 서버에서 별도로 합니다.</p>
+    <button id="workers-refresh">현황 새로고침</button>
+    <p id="workers-notice" role="status"></p>
+    <h3>Worker 연결·진행 상황</h3><div id="workers-list"></div>
+    <h3>내 작업·실행 이력</h3><div id="worker-jobs"></div>
+    <p class="muted">학습 실패·취소·중단은 재승인해야 합니다. 자원 대기 작업만 기존 승인을 검증해 재시도합니다.
+      중단 복구는 저장소 잠금 해제를 확인한 경우에만 가능하며, 학습 결과를 자동 적용하지 않습니다.</p>
+  </dialog>
   <dialog id="code-dialog">
     <div class="dialog-head"><h2>Python 코드 테스트 실행</h2><button id="code-close">닫기</button></div>
     <p class="muted">Python 표준 라이브러리 unittest 전용입니다. 코드는 submission 모듈로 가져오세요.
@@ -248,7 +260,7 @@ class AddTests(unittest.TestCase):
       <button id="lifecycle-refresh">현황 새로고침</button>
       <p id="candidate-state" class="muted"></p><div id="candidate-versions"></div>
       <button id="candidate-rollback">이전 배포 후보로 되돌리기</button>
-      <p class="muted">Worker 연결 여부와 실제 진행률은 아직 측정하지 않습니다. 아래는 저장된 작업 상태입니다.</p>
+      <p class="muted">아래는 저장된 작업 상태입니다. Worker 관리 화면에서 heartbeat와 실제 학습 스텝을 확인하세요.</p>
       <div id="unified-jobs"></div>
     </details>
     <h3>학습 작업</h3><div id="training-jobs"></div>
