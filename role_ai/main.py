@@ -18,7 +18,8 @@ from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.collection import collection_router
 from role_ai.code_execution import execution_router
 from role_ai.config import Settings
-from role_ai.database import Base, build_database
+from role_ai.database import build_database
+from role_ai.migrations import initialize_database
 from role_ai.documents import DocumentRepository, documents_router
 from role_ai.gpu_resources import gpu_router
 from role_ai.learning import learning_router
@@ -62,7 +63,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
 
     @asynccontextmanager
     async def lifespan(app):
-        Base.metadata.create_all(engine)
+        initialize_database(engine)
         if settings.bootstrap_email:
             with factory() as db:
                 repo = Repository(db)
