@@ -1,7 +1,8 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 let csrf = "", activeConversation = null, busy = false;
-let noticeTimer;
+let noticeTimer, workersTimer;
+let workersLoading = false;
 const selectedDocuments = new Set();
 let paidQuoteKey = null;
 let editingMemory = null, reviewingDataset = null;
@@ -35,6 +36,8 @@ async function api(path, options = {}) {
 
 function showAuth() {
   csrf = ""; activeConversation = null;
+  clearInterval(workersTimer); $("workers-dialog").close();
+  $("workers-list").replaceChildren(); $("worker-jobs").replaceChildren();
   $("code-dialog").close(); $("code-result").textContent = "";
   $("code-source").value = $("code-source").defaultValue;
   $("code-tests").value = $("code-tests").defaultValue;
@@ -163,6 +166,7 @@ async function enterWorkspace(data) {
     || status.providers.find((p) => p.usable);
   $("provider").value = usable?.id || "";
   $("code-open").hidden = !status.code_execution_available;
+  $("workers-open").hidden = !status.worker_management_available;
   $("skill").replaceChildren();
   for (const item of status.skills) {
     const option = document.createElement("option");
@@ -827,3 +831,61 @@ $("code-attach").addEventListener("click", () => {
   $("skill").value = "code_tester";
   $("code-dialog").close(); $("message").focus();
 });
+
+
+async function loadWorkers() {
+  if (workersLoading) return;
+  workersLoading = true;
+  const sessionCsrf = csrf;
+  try {
+    const data = await api("/api/workers");
+    if (csrf !== sessionCsrf) return;
+    $("workers-notice").textContent = data.notice;
+    $("workers-list").replaceChildren(); $("worker-jobs").replaceChildren();
+    if (!data.workers.length) $("workers-list").textContent = "등록된 Worker가 없습니다. 서버에서 Worker를 시작하세요.";
+    for (const worker of data.workers) {
+      const card = document.createElement("article"); card.className = "management-card";
+      const text = document.createElement("p");
+      text.textContent = [worker.kind === "training" ? "학습 Worker" : "수집 Worker",
+        worker.online ? "온라인" : "오프라인/종료", worker.state,
+        "단계: " + worker.phase, "마지막 heartbeat: " + worker.heartbeat_age_seconds + "초 전",
+        worker.progress_percent === null ? "진행률: 미확인" :
+          "학습 스텝: " + worker.completed + "/" + worker.total + " (" + worker.progress_percent + "%)"].join(" · ");
+      card.append(text); $("workers-list").append(card);
+    }
+    for (const job of data.jobs) {
+      const card = document.createElement("article"); card.className = "management-card";
+      const title = document.createElement("p");
+      title.textContent = (job.kind === "training" ? "학습" : "수집") + " · " + job.id + " · " + job.state +
+        (job.cancel_requested ? " · 취소 요청됨" : "");
+      card.append(title);
+      const details = document.createElement("details"), label = document.createElement("summary");
+      label.textContent = "결과·실패 사유·실행 이력";
+      const report = document.createElement("pre"); report.textContent = JSON.stringify({report: job.report, history: job.history}, null, 2);
+      details.append(label, report); card.append(details);
+      const action = (name, path) => actionButton(name, async () => {
+        await api("/api/workers/" + job.kind + "/" + job.id + "/" + path, {method: "POST"});
+        await loadWorkers();
+      });
+      if (["queued", "running", "blocked", "waiting"].includes(job.state) && !job.cancel_requested)
+        card.append(action("취소 요청 · 학습 승인은 해제됩니다", "cancel"));
+      if (job.kind === "training" && job.state === "blocked") card.append(action("승인 확인 후 자원 대기 재시도", "retry"));
+      if (job.kind === "collection" && job.state !== "running" && job.report?.length &&
+          ["failed", "cancelled"].includes(job.report[job.report.length - 1].state))
+        card.append(action("남은 수집 횟수 내 재시도", "retry"));
+      if (job.kind === "training" && job.state === "running") card.append(action("중단 확인 후 복구 · 재승인 필요", "recover"));
+      $("worker-jobs").append(card);
+    }
+  } finally { workersLoading = false; }
+}
+$("workers-open").addEventListener("click", async () => {
+  $("workers-dialog").showModal();
+  try { await loadWorkers(); } catch (error) { notify(error.message); }
+  clearInterval(workersTimer);
+  workersTimer = setInterval(() => {
+    if ($("workers-dialog").open) loadWorkers().catch(error => notify(error.message));
+  }, 10000);
+});
+$("workers-close").addEventListener("click", () => $("workers-dialog").close());
+$("workers-dialog").addEventListener("close", () => clearInterval(workersTimer));
+$("workers-refresh").addEventListener("click", () => loadWorkers().catch(error => notify(error.message)));

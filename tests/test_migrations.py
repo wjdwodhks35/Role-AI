@@ -4,20 +4,20 @@ from sqlalchemy import inspect, text
 from role_ai.backup import verify_backup
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
-from role_ai.migrations import MigrationRequired, initialize_database, schema_status, upgrade_offline
+from role_ai.migrations import MIGRATIONS, MigrationRequired, initialize_database, schema_status, upgrade_offline
 
 
 def test_schema_initialization_idempotent_and_legacy(tmp_path):
     engine, _ = build_database(f'sqlite:///{tmp_path / "db"}')
-    assert initialize_database(engine)['current'] == 1
-    assert initialize_database(engine)['current'] == 1
+    assert initialize_database(engine)['current'] == MIGRATIONS[-1][0]
+    assert initialize_database(engine)['current'] == MIGRATIONS[-1][0]
     with engine.begin() as db:
         db.execute(text('DROP TABLE schema_migrations'))
         db.execute(text("INSERT INTO users VALUES('owner','owner@test','hash',1,1)"))
-    assert initialize_database(engine)['current'] == 1
+    assert initialize_database(engine)['current'] == MIGRATIONS[-1][0]
     with engine.connect() as db:
         assert db.scalar(text('SELECT count(*) FROM users')) == 1
-        assert schema_status(db)['current'] == 1
+        assert schema_status(db)['current'] == MIGRATIONS[-1][0]
     engine.dispose()
 
 
@@ -52,7 +52,7 @@ def test_offline_upgrade_backs_up_and_rolls_back(tmp_path, monkeypatch):
     with pytest.raises(MigrationRequired):
         upgrade_offline(settings, tmp_path / 'no-approval')
     result = upgrade_offline(settings, tmp_path / 'backup', offline=True)
-    assert result['current'] == 1
+    assert result['current'] == MIGRATIONS[-1][0]
     verify_backup(tmp_path / 'backup')
     engine, _ = build_database(settings.database_url)
     original = migrations.validate_tables
@@ -61,11 +61,11 @@ def test_offline_upgrade_backs_up_and_rolls_back(tmp_path, monkeypatch):
         if names == ('users',):
             connection.exec_driver_sql('CREATE TABLE must_rollback (id INT)')
             raise MigrationRequired('simulated failure')
-    monkeypatch.setattr(migrations, 'MIGRATIONS', [(1, migrations.BASELINE), (2, ('users',))])
+    monkeypatch.setattr(migrations, 'MIGRATIONS', [*MIGRATIONS, (MIGRATIONS[-1][0] + 1, ('users',))])
     monkeypatch.setattr(migrations, 'validate_tables', fail_after_ddl)
     with pytest.raises(MigrationRequired):
         initialize_database(engine, allow_upgrade=True)
     with engine.connect() as db:
         assert 'must_rollback' not in inspect(db).get_table_names()
-        assert list(db.scalars(text('SELECT version FROM schema_migrations'))) == [1]
+        assert list(db.scalars(text('SELECT version FROM schema_migrations'))) == [v for v, _ in MIGRATIONS]
     engine.dispose()

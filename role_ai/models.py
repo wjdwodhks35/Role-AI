@@ -194,3 +194,26 @@ class CandidateSelection(Base):
     job_id: Mapped[str | None] = mapped_column(String(36))
     revision: Mapped[int] = mapped_column(default=1)
     history: Mapped[str] = mapped_column(Text, default="[]")
+
+
+class WorkerPresence(Base):
+    __tablename__ = 'worker_presence'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), index=True)
+    state: Mapped[str] = mapped_column(String(20))
+    phase: Mapped[str] = mapped_column(String(80))
+    job_id: Mapped[str | None] = mapped_column(String(36))
+    user_id: Mapped[str | None] = mapped_column(String(36))
+    completed: Mapped[int | None]
+    total: Mapped[int | None]
+    started_at: Mapped[float]
+    last_seen: Mapped[float] = mapped_column(index=True)
+
+
+class WorkerControl(Base):
+    __tablename__ = 'worker_controls'
+    kind: Mapped[str] = mapped_column(String(20), primary_key=True)
+    job_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
+    cancel_requested: Mapped[bool] = mapped_column(default=False)
+    history: Mapped[str] = mapped_column(Text, default='[]')

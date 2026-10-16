@@ -5,14 +5,15 @@ import json
 import os
 from pathlib import Path
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 
 from role_ai.artifacts import ArtifactStore, canonical, digest, storage_lock
 from role_ai.config import Settings
 from role_ai.gpu_resources import GpuBudgetError, configure_allocator, preflight
 from role_ai.database import build_database
 from role_ai.migrations import initialize_database
-from role_ai.models import DatasetSnapshot, TrainingJob
+from role_ai.models import DatasetSnapshot, TrainingJob, WorkerControl
+from role_ai.workers import JobCancelled, WorkerMonitor
 
 
 class ResourcesBusy(Exception):
@@ -51,7 +52,7 @@ def _run_sft(plan, train, evaluation, output):
     os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
     from datasets import Dataset
     from peft import LoraConfig, prepare_model_for_kbit_training
-    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainerCallback
     from trl import SFTConfig, SFTTrainer
     import torch
 
@@ -62,6 +63,9 @@ def _run_sft(plan, train, evaluation, output):
     configure_allocator(torch, limits, total)
     if not limits.get("enabled") and free / total < 0.85:
         raise ResourcesBusy("다른 GPU 작업을 중지하고 VRAM을 확보하세요.")
+    monitor = plan.get('_worker_monitor')
+    if monitor:
+        monitor.stage('loading_model')
     local = plan["base_model_path"]
     tokenizer = AutoTokenizer.from_pretrained(local, local_files_only=True, trust_remote_code=False)
     if tokenizer.pad_token is None:
@@ -107,6 +111,17 @@ def _run_sft(plan, train, evaluation, output):
         peft_config=LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05,
                               target_modules="all-linear", task_type="CAUSAL_LM"),
     )
+    if monitor:
+        class ProgressCallback(TrainerCallback):
+            def on_train_begin(self, args, state, control, **kwargs):
+                monitor.stage('training', completed=state.global_step, total=state.max_steps)
+            def on_substep_end(self, args, state, control, **kwargs):
+                monitor.check_cancel()
+            def on_step_end(self, args, state, control, **kwargs):
+                monitor.stage('training', completed=state.global_step, total=state.max_steps)
+            def on_prediction_step(self, args, state, control, **kwargs):
+                monitor.check_cancel()
+        trainer.add_callback(ProgressCallback())
     benchmark = plan.get("benchmark")
     from role_ai.quality import benchmark_result, suite_hash
     if benchmark and suite_hash(benchmark["cases"]) != benchmark["digest"]:
@@ -117,6 +132,8 @@ def _run_sft(plan, train, evaluation, output):
         responses = []
         trainer.model.eval()
         for case in benchmark["cases"]:
+            if monitor:
+                monitor.check_cancel()
             messages = [{"role": "system", "content": role_prompt},
                         {"role": "user", "content": case["prompt"]}]
             tokens = tokenizer.apply_chat_template(messages, tokenize=True,
@@ -131,14 +148,20 @@ def _run_sft(plan, train, evaluation, output):
                     max_new_tokens=128, pad_token_id=tokenizer.pad_token_id)
             responses.append(tokenizer.decode(generated[0, tokens.shape[-1]:], skip_special_tokens=True))
         return benchmark_result(benchmark["cases"], responses)
+    if monitor:
+        monitor.stage("baseline_evaluation")
     baseline_tasks = task_evaluate()
     baseline = trainer.evaluate()
     trainer.train()
+    if monitor:
+        monitor.stage("trained_evaluation")
     after = trainer.evaluate()
     trained_tasks = task_evaluate()
     import math
     if not all(math.isfinite(metrics["eval_loss"]) for metrics in [baseline, after]):
         raise ValueError("평가 loss가 유효하지 않습니다.")
+    if monitor:
+        monitor.stage("saving_adapter")
     trainer.save_model(str(output / "adapter"))
     tokenizer.save_pretrained(str(output / "adapter"))
     return {
@@ -150,7 +173,19 @@ def _run_sft(plan, train, evaluation, output):
     }
 
 
-def run_one(settings, trainer=run_sft):
+def run_one(settings, trainer=run_sft, monitor=None):
+    if not settings.training_enabled or settings.mode != 'local':
+        raise ValueError('ROLE_AI_TRAINING_ENABLED가 false입니다. GPU 학습을 실행하지 않습니다.')
+    if monitor is None:
+        with WorkerMonitor(settings, 'training') as owned:
+            return run_one(settings, trainer, owned)
+    try:
+        return _run_one(settings, trainer, monitor)
+    finally:
+        monitor.finish_job()
+
+
+def _run_one(settings, trainer, monitor):
     if not settings.training_enabled or settings.mode != "local":
         raise ValueError("ROLE_AI_TRAINING_ENABLED가 false입니다. GPU 학습을 실행하지 않습니다.")
     store = ArtifactStore(settings)
@@ -173,7 +208,9 @@ def run_one(settings, trainer=run_sft):
                 jid, uid, sid, approved = job.id, job.user_id, job.dataset_id, job.approval_hash
                 item = db.get(DatasetSnapshot, sid)
                 output = None
+                monitor.start_job(jid, uid)
                 try:
+                    monitor.stage("validating_approval")
                     plan, reviews = json.loads(item.plan), json.loads(item.reviews)
                     if item.user_id != uid or item.approval_hash != approved or digest({
                         "plan": plan, "reviews": reviews, "data_hash": item.data_hash
@@ -193,7 +230,9 @@ def run_one(settings, trainer=run_sft):
                     db.commit()
                     output = store.path(uid, sid) / ("run-" + jid)
                     output.mkdir(exist_ok=False)
-                    report = trainer({**plan, "resource_limits": limits}, train, evaluation, output)
+                    monitor.stage("training_preparation")
+                    report = trainer({**plan, "resource_limits": limits, "_worker_monitor": monitor}, train, evaluation, output)
+                    monitor.stage("validating_result")
                     if report.get("execution") == "gpu_sft_qlora":
                         report["adapter_fingerprint"] = model_fingerprint(output / "adapter")
                         report["base_model_fingerprint"] = plan["base_model_fingerprint"]
@@ -205,6 +244,10 @@ def run_one(settings, trainer=run_sft):
                         raise ValueError("학습 결과 저장 한도를 초과했습니다.")
                     (output / "evaluation.json").write_text(canonical(report), encoding="utf-8")
                     final_state, dataset_state = "evaluated", "evaluated"
+                except JobCancelled:
+                    report = {"reason": "사용자 취소 또는 Worker 종료 요청", "activation": "not_activated"}
+                    final_state, dataset_state = "cancelled", "reviewed"
+                    item.plan, item.approval_hash = None, None
                 except ResourcesBusy as exc:
                     if output is not None and output.is_dir() and not any(output.iterdir()):
                         output.rmdir()
@@ -215,10 +258,18 @@ def run_one(settings, trainer=run_sft):
                               "error_type": type(exc).__name__, "activation": "not_activated"}
                     final_state, dataset_state = "failed", "reviewed"
                     item.plan, item.approval_hash = None, None
+                # Serialize the final decision with cancel API writes; never lose an accepted cancel.
+                db.execute(text('BEGIN IMMEDIATE'))
+                control = db.get(WorkerControl, ('training', jid))
+                if monitor.stopping.is_set() or (control and control.cancel_requested):
+                    report = {"reason": "사용자 취소 또는 Worker 종료 요청", "activation": "not_activated"}
+                    final_state, dataset_state = "cancelled", "reviewed"
+                    item.plan, item.approval_hash = None, None
                 job = db.get(TrainingJob, jid)
                 job.state, job.report = final_state, canonical(report)
                 item.state = dataset_state
                 db.commit()
+                monitor.record_result(final_state, report)
                 return {"job_id": jid, "state": final_state, "report": report}
     finally:
         engine.dispose()
@@ -226,11 +277,21 @@ def run_one(settings, trainer=run_sft):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--once", action="store_true", required=True)
-    parser.parse_args()
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument("--poll-seconds", type=int, default=10, choices=range(1, 61))
+    args = parser.parse_args()
     try:
-        result = run_one(Settings())
-        print(canonical(result or {"state": "idle"}))
+        settings = Settings()
+        if not settings.training_enabled or settings.mode != 'local':
+            raise ValueError('로컬 학습 활성화와 승인된 작업이 필요합니다.')
+        with WorkerMonitor(settings, 'training') as monitor:
+            monitor.install_signals()
+            while not monitor.stopping.is_set():
+                result = run_one(settings, monitor=monitor)
+                print(canonical(result or {"state": "idle"}), flush=True)
+                if args.once:
+                    break
+                monitor.stopping.wait(args.poll_seconds)
     except ValueError as exc:
         parser.exit(2, str(exc) + "\n")
 

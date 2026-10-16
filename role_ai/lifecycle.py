@@ -82,7 +82,9 @@ def lifecycle_router(authenticated, repository, settings):
             entries.append({"id": a.id, "kind": "gpt_review", "state": a.state,
                             "label": a.dataset_id, "created_at": a.created_at,
                             "report": json.loads(a.detail)})
-        return {"entries": entries, "worker_connectivity": "not_measured",
+        from role_ai.workers import worker_views
+        return {"entries": entries, "worker_connectivity": "heartbeat",
+                "workers": worker_views(repo.db),
                 "progress_percent": None,
                 "counts": {state: sum(e["state"] == state for e in entries)
                            for state in sorted({e["state"] for e in entries})}}

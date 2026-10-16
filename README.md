@@ -163,3 +163,13 @@ AI가 주제별 데이터셋을 자동 탐색·선별·수집하고 로컬 검�
 최대 VRAM·시스템 여유·작업별 추정치를 설정하는 [GPU 메모리 설정](docs/gpu-memory-settings.md)을 추가했습니다. 작업 전 검사이며 시스템 전체의 강제 VRAM 제한은 아닙니다.
 
 전체 샘플 검수·고정 질문 평가·배포 후보 버전·통합 작업 현황: [설명](docs/model-quality-lifecycle.md). 후보 선택은 채팅 모델을 자동 변경하지 않습니다.
+
+
+## 운영 기능
+
+- [오프라인 백업·검증·새 경로 복원](docs/backup-restore.md): 기존 데이터 덮어쓰기 없음.
+- [DB 버전·마이그레이션](docs/migrations.md): 기존 DB는 중지·백업 후 업그레이드.
+- [Worker 관리](docs/workers.md): heartbeat, 실제 학습 스텝, 단계별 취소, 승인 유지 자원 대기 재시도,
+  OS 잠금 확인 후 중단 처리와 재승인. 사용자 서버/GPU의 전체 흐름은 별도 검증해야 합니다.
+
+이번 Worker 관리 버전의 기존 DB는 **v2 업그레이드 후** API·Worker를 시작하세요.
