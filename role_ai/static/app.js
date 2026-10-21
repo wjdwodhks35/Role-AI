@@ -8,6 +8,12 @@ const selectedDocuments = new Set();
 let paidQuoteKey = null;
 let editingMemory = null, reviewingDataset = null;
 
+function resetRequestPreview() {
+  $("request-preview").hidden = true;
+  $("request-analysis-result").replaceChildren();
+  $("request-role-actions").replaceChildren();
+}
+
 function resetPaidQuote() {
   paidQuoteKey = null;
   $("paid-approval").hidden = true;
@@ -36,7 +42,7 @@ async function api(path, options = {}) {
 }
 
 function showAuth() {
-  csrf = ""; activeConversation = null;
+  csrf = ""; activeConversation = null; resetRequestPreview();
   clearInterval(workersTimer); $("workers-dialog").close();
   $("req-eval-dialog").close(); $("req-eval-consent").checked = false;
   for (const id of ["req-eval-cases", "req-eval-analyses", "req-eval-custom", "req-eval-name"]) {
@@ -61,7 +67,7 @@ function showAuth() {
 
 function setBusy(value) {
   busy = value;
-  for (const id of ["send", "new-chat", "engine", "provider", "skill", "probe", "logout"]) {
+  for (const id of ["send", "new-chat", "engine", "provider", "skill", "probe", "logout", "request-analyze"]) {
     $(id).disabled = value;
   }
   for (const button of $("conversation-list").querySelectorAll("button")) button.disabled = value;
@@ -135,6 +141,7 @@ async function loadConversations() {
 async function openConversation(conversation) {
   const messages = await api("/api/conversations/" + conversation.id + "/messages");
   resetPaidQuote();
+  resetRequestPreview();
   activeConversation = conversation; $("chat-title").textContent = conversation.title;
   $("messages").replaceChildren();
   if (!messages.length) emptyState();
@@ -174,6 +181,7 @@ async function enterWorkspace(data) {
   $("provider").value = usable?.id || "";
   $("code-open").hidden = !status.code_execution_available;
   $("workers-open").hidden = !status.worker_management_available;
+  $("request-analyze").hidden = !status.request_analysis_available;
   $("req-eval-open").hidden = !status.requirements_evaluation_available;
   $("skill").replaceChildren();
   for (const item of status.skills) {
@@ -219,7 +227,7 @@ $("engine").addEventListener("change", () => {
   $("current-engine").textContent = $("engine").value === "openclaw" ? "OpenClaw" : "기본 비서";
   updateProviderState();
 });
-$("message").addEventListener("input", resetPaidQuote);
+$("message").addEventListener("input", () => { resetPaidQuote(); resetRequestPreview(); });
 $("project").addEventListener("input", resetPaidQuote);
 $("skill").addEventListener("change", () => {
   resetPaidQuote();
@@ -228,6 +236,7 @@ $("skill").addEventListener("change", () => {
 $("new-chat").addEventListener("click", () => {
   if (busy) return;
   resetPaidQuote();
+  resetRequestPreview();
   activeConversation = null; $("chat-title").textContent = "새로운 대화";
   emptyState(); loadConversations().catch((e) => notify(e.message));
 });
@@ -249,6 +258,7 @@ $("chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const content = $("message").value.trim();
   if (!content || busy) return;
+  resetRequestPreview();
   setBusy(true);
   try {
     if (!activeConversation) activeConversation = await api("/api/conversations", {
@@ -994,3 +1004,42 @@ $("req-eval-suite-form").addEventListener("submit", async event => {
 });
 $("req-eval-provided-form").addEventListener("submit", event => { event.preventDefault(); runRequirementEvaluation("provided"); });
 $("req-eval-model").addEventListener("click", () => runRequirementEvaluation("ollama"));
+
+// The preview is ephemeral, bound to the exact input and conversation, and never submitted as authority.
+$("request-dismiss").addEventListener("click", resetRequestPreview);
+$("request-analyze").addEventListener("click", async () => {
+  const content = $("message").value.trim();
+  if (busy) return;
+  if (!content || content.length > 2000) { notify("분석할 요청을 1~2000자로 입력하세요."); return; }
+  if (!window.confirm("이번 요청을 설정된 로컬 Ollama로 보내 분석할까요? 분석 작업만 수행합니다.")) return;
+  const conversation = activeConversation?.id || null;
+  resetRequestPreview(); setBusy(true);
+  try {
+    const result = await api("/api/request-analysis/preview", {
+      method: "POST", body: JSON.stringify({ content, approved: true })
+    });
+    if ($("workspace").hidden || $("message").value.trim() !== content || (activeConversation?.id || null) !== conversation) return;
+    const a = result.analysis;
+    const fields = [["목적", a.goal], ["의도", a.intents.join(", ")], ["작업 순서", a.tasks.join(" → ")],
+      ["제약", a.constraints.join(", ") || "감지된 제약 없음"], ["누락 입력", a.missing_inputs.join(", ") || "없음"],
+      ["확인 질문", a.questions.join(" / ") || "없음"], ["출력", a.outputs.join(", ")]];
+    for (const [label, value] of fields) {
+      const line = document.createElement("p"); line.textContent = label + ": " + value;
+      $("request-analysis-result").append(line);
+    }
+    for (const role of result.suggested_roles) {
+      const option = [...$("skill").options].find((o) => o.value === role);
+      if (!option) continue;
+      const button = document.createElement("button"); button.type = "button";
+      button.textContent = option.textContent + " 역할 적용";
+      button.addEventListener("click", () => {
+        if (busy || $("message").value.trim() !== content || (activeConversation?.id || null) !== conversation) return;
+        $("skill").value = role; $("skill").dispatchEvent(new Event("change"));
+        resetRequestPreview(); notify("역할을 선택했습니다. 확인 질문이 있으면 메시지를 보완한 뒤 보내세요.");
+      });
+      $("request-role-actions").append(button);
+    }
+    $("request-preview").hidden = false;
+  } catch (error) { notify(error.message); }
+  finally { setBusy(false); }
+});
