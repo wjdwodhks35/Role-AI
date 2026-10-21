@@ -15,7 +15,8 @@ BASELINE = (
     'dataset_snapshots', 'document_chunks', 'documents', 'memories', 'memory_history',
     'message_retrievals', 'messages', 'training_jobs', 'users',
 )
-MIGRATIONS = [(1, BASELINE), (2, ('worker_presence', 'worker_controls'))]
+MIGRATIONS = [(1, BASELINE), (2, ('worker_presence', 'worker_controls')),
+              (3, ('requirement_eval_suites', 'requirement_eval_runs'))]
 
 
 class MigrationRequired(ValueError):

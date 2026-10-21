@@ -12,7 +12,7 @@ from sqlalchemy import inspect
 from role_ai.artifacts import storage_lock
 from role_ai.config import Settings
 from role_ai.database import build_database
-from role_ai.migrations import MigrationRequired, initialize_database, upgrade_offline
+from role_ai.migrations import MIGRATIONS, MigrationRequired, initialize_database, upgrade_offline
 from role_ai.models import CollectionPlan, DatasetSnapshot, TrainingJob, WorkerPresence
 from role_ai.training import ResourcesBusy, run_one
 from role_ai.workers import WorkerMonitor, worker_views
@@ -171,7 +171,7 @@ def test_v1_worker_migration_requires_offline_backup(tmp_path, monkeypatch):
     with engine.connect() as db:
         assert 'worker_presence' not in inspect(db).get_table_names()
     engine.dispose()
-    assert upgrade_offline(settings, tmp_path / 'backup', offline=True)['current'] == 2
+    assert upgrade_offline(settings, tmp_path / 'backup', offline=True)['current'] == MIGRATIONS[-1][0]
     assert (tmp_path / 'backup/manifest.json').is_file()
 
 

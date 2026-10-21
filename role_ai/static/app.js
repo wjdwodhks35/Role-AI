@@ -3,6 +3,7 @@ const $ = (id) => document.getElementById(id);
 let csrf = "", activeConversation = null, busy = false;
 let noticeTimer, workersTimer;
 let workersLoading = false;
+let requirementEvalBusy = false;
 const selectedDocuments = new Set();
 let paidQuoteKey = null;
 let editingMemory = null, reviewingDataset = null;
@@ -37,6 +38,12 @@ async function api(path, options = {}) {
 function showAuth() {
   csrf = ""; activeConversation = null;
   clearInterval(workersTimer); $("workers-dialog").close();
+  $("req-eval-dialog").close(); $("req-eval-consent").checked = false;
+  for (const id of ["req-eval-cases", "req-eval-analyses", "req-eval-custom", "req-eval-name"]) {
+    if ($(id).tagName === "PRE") $(id).textContent = ""; else $(id).value = "";
+  }
+  $("req-eval-result").replaceChildren(); $("req-eval-history").replaceChildren();
+  $("req-eval-state").textContent = ""; $("req-eval-suite").replaceChildren();
   $("workers-list").replaceChildren(); $("worker-jobs").replaceChildren();
   $("code-dialog").close(); $("code-result").textContent = "";
   $("code-source").value = $("code-source").defaultValue;
@@ -167,6 +174,7 @@ async function enterWorkspace(data) {
   $("provider").value = usable?.id || "";
   $("code-open").hidden = !status.code_execution_available;
   $("workers-open").hidden = !status.worker_management_available;
+  $("req-eval-open").hidden = !status.requirements_evaluation_available;
   $("skill").replaceChildren();
   for (const item of status.skills) {
     const option = document.createElement("option");
@@ -889,3 +897,100 @@ $("workers-open").addEventListener("click", async () => {
 $("workers-close").addEventListener("click", () => $("workers-dialog").close());
 $("workers-dialog").addEventListener("close", () => clearInterval(workersTimer));
 $("workers-refresh").addEventListener("click", () => loadWorkers().catch(error => notify(error.message)));
+
+
+const requirementLabels = {intents:"의도", tasks:"작업 순서", constraints:"제약", missing_inputs:"누락 입력", needs_clarification:"확인 필요 여부", outputs:"결과물"};
+function renderRequirementReport(run, target) {
+  target.replaceChildren();
+  const title = document.createElement("h3");
+  title.textContent = (run.mode === "ollama" ? "Ollama" : "직접 입력") + " · " + run.state + " · " + (run.model || "모델 호출 없음");
+  const report = run.report;
+  const score = document.createElement("p");
+  score.textContent = report.score === undefined ? "점수 미확정" :
+    "종합 " + report.score + "/100 · 유효 응답 " + Math.round(report.valid_schema_rate * 100) + "% · 제약 누락 " +
+    (report.constraint_omission_rate === null ? "해당 없음" : Math.round(report.constraint_omission_rate * 100) + "%");
+  target.append(title, score);
+  for (const [field, value] of Object.entries(report.field_scores || {})) {
+    const line = document.createElement("p"); line.textContent = requirementLabels[field] + ": " + value + "/100"; target.append(line);
+  }
+  const scope = document.createElement("p"); scope.textContent = report.scope || "평가가 중단됐거나 완료되지 않았습니다."; target.append(scope);
+  const details = document.createElement("details"), summary = document.createElement("summary"), pre = document.createElement("pre");
+  summary.textContent = "사례별 누락·추가·순서·분석 오류와 원문";
+  pre.textContent = JSON.stringify(run, null, 2); details.append(summary, pre); target.append(details);
+}
+async function loadRequirementHistory() {
+  const sessionCsrf = csrf, runs = await api("/api/requirement-evaluation/runs");
+  if (csrf !== sessionCsrf) return;
+  $("req-eval-history").replaceChildren();
+  for (const run of runs) {
+    const card = document.createElement("article"); card.className = "management-card";
+    const label = document.createElement("p"); label.textContent = run.suite_digest + " · " + new Date(run.created_at * 1000).toLocaleString();
+    card.append(label); const content = document.createElement("div"); renderRequirementReport(run, content); card.append(content);
+    $("req-eval-history").append(card);
+  }
+}
+async function selectRequirementSuite() {
+  $("req-eval-consent").checked = false;
+  $("req-eval-result").replaceChildren(); $("req-eval-cases").textContent = "";
+  const id = $("req-eval-suite").value, sessionCsrf = csrf;
+  if (!id) return;
+  const suite = await api("/api/requirement-evaluation/suites/" + id);
+  if (csrf !== sessionCsrf || $("req-eval-suite").value !== id) return;
+  $("req-eval-cases").textContent = JSON.stringify(suite, null, 2);
+}
+async function loadRequirementSuites(selected) {
+  const sessionCsrf = csrf, suites = await api("/api/requirement-evaluation/suites");
+  if (csrf !== sessionCsrf) return;
+  $("req-eval-suite").replaceChildren();
+  for (const suite of suites) {
+    const option = document.createElement("option"); option.value = suite.id; option.textContent = suite.name + " · " + suite.case_count + "개";
+    $("req-eval-suite").append(option);
+  }
+  if (selected) $("req-eval-suite").value = selected;
+  await selectRequirementSuite();
+}
+async function runRequirementEvaluation(mode) {
+  if (requirementEvalBusy) return;
+  const id = $("req-eval-suite").value, sessionCsrf = csrf;
+  if (!id) { notify("평가 묶음을 등록하고 선택하세요."); return; }
+  if (mode === "ollama" && !$("req-eval-consent").checked) { notify("이번 로컬 모델 전송에 동의해 주세요."); return; }
+  let body;
+  try { body = mode === "ollama" ? {approved:true} : {analyses:JSON.parse($("req-eval-analyses").value)}; }
+  catch { notify("분석 JSON 형식을 확인하세요."); return; }
+  requirementEvalBusy = true;
+  for (const control of $("req-eval-dialog").querySelectorAll("button, input, textarea, select")) if (control.id !== "req-eval-close") control.disabled = true;
+  $("req-eval-state").textContent = mode === "ollama" ? "로컬 모델 분석·평가 중… 최대 300초" : "정답과 비교 중…";
+  try {
+    const run = await api("/api/requirement-evaluation/suites/" + id + "/" + mode, {method:"POST", body:JSON.stringify(body)});
+    if (csrf !== sessionCsrf) return;
+    renderRequirementReport(run, $("req-eval-result"));
+    $("req-eval-state").textContent = "평가 저장 완료 · 실제 작업 실행 없음";
+    await loadRequirementHistory();
+  } catch (error) { if (csrf === sessionCsrf) $("req-eval-state").textContent = error.message; }
+  finally {
+    requirementEvalBusy = false; $("req-eval-consent").checked = false;
+    for (const control of $("req-eval-dialog").querySelectorAll("button, input, textarea, select")) control.disabled = false;
+  }
+}
+$("req-eval-open").addEventListener("click", async () => {
+  $("req-eval-dialog").showModal();
+  if (requirementEvalBusy) return;
+  try { await loadRequirementSuites(); await loadRequirementHistory(); } catch (error) { notify(error.message); }
+});
+$("req-eval-close").addEventListener("click", () => $("req-eval-dialog").close());
+$("req-eval-suite").addEventListener("change", () => selectRequirementSuite().catch(error => notify(error.message)));
+$("req-eval-refresh").addEventListener("click", () => loadRequirementHistory().catch(error => notify(error.message)));
+$("req-eval-builtin").addEventListener("click", async () => {
+  const button = $("req-eval-builtin"); button.disabled = true;
+  try { const suite = await api("/api/requirement-evaluation/suites/builtin", {method:"POST"}); await loadRequirementSuites(suite.id); }
+  catch (error) { notify(error.message); } finally { button.disabled = false; }
+});
+$("req-eval-suite-form").addEventListener("submit", async event => {
+  event.preventDefault(); const button = event.submitter; button.disabled = true;
+  try {
+    const suite = await api("/api/requirement-evaluation/suites", {method:"POST", body:JSON.stringify({name:$("req-eval-name").value, cases:JSON.parse($("req-eval-custom").value)})});
+    await loadRequirementSuites(suite.id);
+  } catch (error) { notify(error.message); } finally { button.disabled = false; }
+});
+$("req-eval-provided-form").addEventListener("submit", event => { event.preventDefault(); runRequirementEvaluation("provided"); });
+$("req-eval-model").addEventListener("click", () => runRequirementEvaluation("ollama"));

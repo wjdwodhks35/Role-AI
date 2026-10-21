@@ -217,3 +217,28 @@ class WorkerControl(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
     cancel_requested: Mapped[bool] = mapped_column(default=False)
     history: Mapped[str] = mapped_column(Text, default='[]')
+
+
+
+class RequirementEvalSuite(Base):
+    __tablename__ = 'requirement_eval_suites'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    cases: Mapped[str] = mapped_column(Text)
+    digest: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class RequirementEvalRun(Base):
+    __tablename__ = 'requirement_eval_runs'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
+    suite_id: Mapped[str] = mapped_column(ForeignKey('requirement_eval_suites.id'), index=True)
+    suite_digest: Mapped[str] = mapped_column(String(64))
+    mode: Mapped[str] = mapped_column(String(20))
+    state: Mapped[str] = mapped_column(String(20))
+    provider: Mapped[str] = mapped_column(String(20))
+    model: Mapped[str] = mapped_column(String(100))
+    report: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[float] = mapped_column(default=time.time)
