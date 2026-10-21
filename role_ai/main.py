@@ -31,6 +31,7 @@ from role_ai.schemas import ChatRequest, ConversationCreate, Credentials, Provid
 from role_ai.semantic import SemanticSearch
 from role_ai.security import RateLimiter, hash_password, token_hash, verify_password
 from role_ai.skills import SKILLS
+from role_ai.requirements_eval import evaluation_router
 from role_ai.workers import workers_router
 
 COOKIE = "role_ai_session"
@@ -133,6 +134,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
 
     app.include_router(lifecycle_router(authenticated, repository, settings))
     app.include_router(gpu_router(authenticated, settings))
+    app.include_router(evaluation_router(authenticated, repository, settings, providers))
     app.include_router(workers_router(authenticated, repository, settings))
     app.include_router(execution_router(authenticated, settings))
     app.include_router(policy_router(authenticated, repository, settings, providers, factory))
@@ -229,6 +231,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         return {
             "resource_settings_available": actor[0].is_owner and settings.mode == "local",
             "code_execution_available": actor[0].is_owner and settings.mode == "local" and settings.code_execution_enabled,
+            "requirements_evaluation_available": actor[0].is_owner and settings.mode == "local",
             "worker_management_available": actor[0].is_owner and settings.mode == "local",
             "semantic_available": bool(settings.embedding_model),
             "phase": 1, "assistant_engine": "provider_fallback",

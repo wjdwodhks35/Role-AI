@@ -62,6 +62,7 @@
         <button id="memory-open">기억 관리</button>
         <button id="learning-open">학습 데이터</button>
         <button id="workers-open" hidden>Worker 관리</button>
+        <button id="req-eval-open" hidden>요구사항 분석 평가</button>
       </section>
       <p id="connection-state" class="muted">모델 연결을 확인해 주세요.</p>
       <section id="messages" class="messages" aria-label="대화 내용" aria-live="polite"></section>
@@ -94,6 +95,35 @@
       <p class="muted">아직 제공되지 않는 기능은 실행되지 않습니다. Mock은 실제 AI 응답이 아닌 테스트용입니다.</p>
     </section>
   </div>
+  <dialog id="req-eval-dialog">
+    <div class="dialog-head"><h2>요구사항 분석 전용 평가</h2><button id="req-eval-close">닫기</button></div>
+    <p class="muted">정답과 분석 JSON을 비교하는 평가입니다. 실제 작업을 실행하지 않습니다.
+      이전 구현 준비도 점수와 다르며, 목적 서술·질문 문장의 의미 품질은 점수에 포함하지 않습니다.</p>
+    <button id="req-eval-builtin">합성 기본 10개 사례 등록</button>
+    <label>평가 묶음<select id="req-eval-suite"></select></label>
+    <details><summary>선택 묶음의 요청·정답 확인</summary><pre id="req-eval-cases"></pre></details>
+    <details><summary>직접 만든 평가 묶음 등록</summary>
+      <form id="req-eval-suite-form" class="management-form">
+        <label>묶음 이름<input id="req-eval-name" maxlength="100" required></label>
+        <label>사례 JSON 배열<textarea id="req-eval-custom" rows="8" required></textarea></label>
+        <button type="submit">새 고정 묶음 등록</button>
+      </form>
+    </details>
+    <details><summary>분석 JSON 직접 입력 후 채점 · 모델 호출 없음</summary>
+      <form id="req-eval-provided-form" class="management-form">
+        <label>사례 ID별 분석 객체<textarea id="req-eval-analyses" rows="10" required placeholder='{"explain":{"goal":"...","intents":["explain"],"tasks":["explain"],"constraints":[],"missing_inputs":[],"needs_clarification":false,"questions":[],"outputs":["explanation"]}}'></textarea></label>
+        <button type="submit">입력 분석 채점</button>
+      </form>
+    </details>
+    <label><input id="req-eval-consent" type="checkbox">이번 묶음의 요청을 설정된 로컬 Ollama로 전송해 분석·평가합니다.</label>
+    <button id="req-eval-model">Ollama 분석·평가 실행</button>
+    <p class="muted">모델 평가는 최대 10개 사례·300초입니다. OpenAI·외부 모델·작업 실행으로 전환하지 않습니다.
+      정답을 모델에 보내지 않으며, 질문 표현은 정답과 같을 필요가 없습니다.</p>
+    <p id="req-eval-state" role="status" aria-live="polite"></p>
+    <div id="req-eval-result"></div>
+    <button id="req-eval-refresh">저장된 결과 새로고침</button>
+    <h3>평가 이력 · 묶음 해시가 같은 결과끼리 비교하세요</h3><div id="req-eval-history"></div>
+  </dialog>
   <dialog id="workers-dialog">
     <div class="dialog-head"><h2>Worker 관리</h2><button id="workers-close">닫기</button></div>
     <p class="muted">5초 heartbeat · 20초가 지나면 오프라인/진행률 미확인. 단계 사이 취소이므로
