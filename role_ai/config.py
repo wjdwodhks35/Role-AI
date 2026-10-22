@@ -68,7 +68,9 @@ class Settings(BaseSettings):
             raise ValueError("Set both bootstrap email and password, or neither")
         if self.bootstrap_email and (
             "@" not in self.bootstrap_email
-            or len(self.bootstrap_password.get_secret_value()) < 12
+            or len(self.bootstrap_password.get_secret_value()) > 128
         ):
-            raise ValueError("Bootstrap credentials require an email and 12-character password")
+            raise ValueError(
+                "Bootstrap credentials require an email and a non-empty password up to 128 characters"
+            )
         return self

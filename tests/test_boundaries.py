@@ -36,17 +36,21 @@ def test_public_mode_cannot_enable_mock_or_insecure_cookies():
     assert settings(mode="public", cookie_secure=True).mode == "public"
 
 
-def test_registration_disabled_and_bootstrap_owner(tmp_path):
+@pytest.mark.parametrize("password", ["x", "1234", "safe-owner-password-123", "p" * 128])
+def test_registration_disabled_and_bootstrap_owner(tmp_path, password):
+    for invalid in ("", "p" * 129):
+        with pytest.raises(ValidationError):
+            settings(bootstrap_email="owner@example.test", bootstrap_password=invalid)
     app = create_app(settings(
         database_url=f"sqlite:///{tmp_path / 'owner.db'}",
-        bootstrap_email="owner@example.test", bootstrap_password="safe-owner-password-123",
+        bootstrap_email="owner@example.test", bootstrap_password=password,
     ))
     with TestClient(app) as client:
         assert client.post("/api/auth/register", json={
             "email": "new@example.test", "password": "safe-test-password-123"
         }).status_code == 403
         response = client.post("/api/auth/login", json={
-            "email": "owner@example.test", "password": "safe-owner-password-123"
+            "email": "owner@example.test", "password": password
         })
         assert response.status_code == 200
         cookie = response.headers["set-cookie"].lower()
