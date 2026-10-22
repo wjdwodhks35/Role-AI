@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     code_execution_image: str = ""
     code_execution_socket: str = "/var/run/docker.sock"
     code_execution_timeout_seconds: int = Field(default=10, ge=1, le=30)
+    rlaif_enabled: bool = False
+    rlaif_judge_url: str = "http://127.0.0.1:11434"
+    rlaif_judge_model: str = Field(default="", max_length=100, pattern=r"^[A-Za-z0-9._:-]*$")
+    rlaif_judge_timeout_seconds: float = Field(default=60, ge=1, le=120)
     training_enabled: bool = False
     training_base_model_path: str = ""
     training_base_model_revision: str = ""
