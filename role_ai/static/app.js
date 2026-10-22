@@ -249,6 +249,17 @@ $("engine").addEventListener("change", () => {
   updateProviderState();
 });
 $("message").addEventListener("input", () => { resetPaidQuote(); resetRequestPreview(); });
+let messageComposing = false;
+$("message").addEventListener("compositionstart", () => { messageComposing = true; });
+$("message").addEventListener("compositionend", () => { messageComposing = false; });
+$("message").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+  // Some IMEs report keyCode 229 even after compositionend, with isComposing=false.
+  if (messageComposing || event.isComposing || event.keyCode === 229) return;
+  event.preventDefault();
+  if (event.repeat || busy || $("send").disabled || !$("message").value.trim()) return;
+  $("chat-form").requestSubmit($("send"));
+});
 $("project").addEventListener("input", resetPaidQuote);
 $("skill").addEventListener("change", () => {
   resetPaidQuote();
