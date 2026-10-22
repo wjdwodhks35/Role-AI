@@ -27,19 +27,28 @@ def test_requires_auth(client):
     assert client.get("/api/status").status_code == 401
 
 
-def test_password_and_session_storage(signed_in):
-    client = signed_in
+@pytest.mark.parametrize("password", ["x", "1234", "safe-test-password-123", "p" * 128])
+def test_password_and_session_storage(client, password):
+    credentials = {"email": "alice@example.test", "password": password}
+    assert client.post("/api/auth/register", json=credentials).status_code == 201
     with client.app.state.database_factory() as db:
         repo = Repository(db)
         user = repo.user_by_email("alice@example.test")
         assert user.password_hash.startswith("pbkdf2_sha256$")
-        assert "safe-test-password" not in user.password_hash
         raw = client.cookies.get(COOKIE)
         session = repo.auth_session(token_hash(raw))
         assert session.token_hash != raw
         assert session.expires_at > time.time()
     assert "csrf_token" in client.get("/api/auth/me").json()
     assert client.get("/api/auth/me").headers["Cache-Control"] == "no-store"
+    client.headers["X-CSRF-Token"] = client.get("/api/auth/me").json()["csrf_token"]
+    assert client.post("/api/auth/logout").status_code == 204
+    assert client.post("/api/auth/login", json=credentials).status_code == 200
+    for invalid in ("", "p" * 129):
+        for route in ("register", "login"):
+            assert client.post(f"/api/auth/{route}", json={
+                "email": "other@example.test", "password": invalid,
+            }).status_code == 422
 
 
 def test_logout_invalidates_server_session(signed_in):

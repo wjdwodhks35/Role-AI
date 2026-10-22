@@ -32,12 +32,30 @@ async function api(path, options = {}) {
   if (options.body) headers["Content-Type"] = "application/json";
   if (options.method && options.method !== "GET") headers["X-CSRF-Token"] = csrf;
   const response = await fetch(path, { ...options, headers, credentials: "same-origin" });
-  const data = response.status === 204 ? null : await response.json();
+  return readApiResponse(path, response);
+}
+
+async function readApiResponse(path, response) {
+  let data = null, validJson = response.status === 204;
+  if (response.status !== 204) {
+    const text = await response.text();
+    try { data = JSON.parse(text); validJson = true; } catch { /* Proxy responses may be plain text or HTML. */ }
+  }
   if (!response.ok) {
     if (response.status === 401 && !path.includes("/auth/login")) showAuth();
-    const detail = typeof data?.detail === "string" ? data.detail : "입력값을 확인해 주세요.";
+    const fallback = {
+      401: "인증이 필요합니다. 로그인 정보와 앞단 접근 인증을 확인해 주세요.",
+      403: "요청이 거부되었습니다. 접근 권한 또는 보안 설정을 확인해 주세요.",
+      429: "요청이 많습니다. 잠시 후 다시 시도해 주세요.",
+    };
+    const detail = typeof data?.detail === "string" ? data.detail : (
+      fallback[response.status] || (response.status >= 500
+        ? "서버 응답에 문제가 있습니다. 잠시 후 다시 시도해 주세요."
+        : "입력값을 확인해 주세요.")
+    );
     throw new Error(detail);
   }
+  if (!validJson) throw new Error("서버가 예상한 데이터 대신 다른 응답을 보냈습니다. 접속 주소와 접근 인증을 확인해 주세요.");
   return data;
 }
 
@@ -329,7 +347,7 @@ async function start() {
     const policy = await api("/api/auth/policy");
     $("register").hidden = !policy.registration_enabled;
     const response = await fetch("/api/auth/me", { credentials: "same-origin" });
-    if (response.ok) await enterWorkspace(await response.json());
+    if (response.ok) await enterWorkspace(await readApiResponse("/api/auth/me", response));
     else if (response.status !== 401) notify("서버 상태를 확인해 주세요.");
   } catch (error) { notify("서버에 연결하지 못했습니다. " + error.message); }
 }

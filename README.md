@@ -43,8 +43,9 @@ Mock 또는 유료 API로 자동 대체하지 않습니다. [OpenAI 설정 안�
     python -m pip install -e ".[test]"
     cp .env.example .env
 
-.env에서 ROLE_AI_BOOTSTRAP_EMAIL과 12자 이상의
+.env에서 ROLE_AI_BOOTSTRAP_EMAIL과
 ROLE_AI_BOOTSTRAP_PASSWORD를 **직접 설정**하세요. 기본 계정이나 기본 비밀번호는 없습니다.
+비밀번호의 12자 최소 제한은 없으며, 빈 값은 허용하지 않습니다(최대 128자).
 최초 시작 시에만 해당 계정이 생성되고, 이미 있는 계정의 비밀번호/권한은 바꾸지 않습니다.
 생성 후 부트스트랩 이메일과 비밀번호를 .env에서 제거하고 재시작하세요.
 
