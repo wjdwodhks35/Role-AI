@@ -74,7 +74,9 @@
       <form id="chat-form" class="composer">
         <label for="message">메시지</label>
         <textarea id="message" rows="3" maxlength="4000"
-                  placeholder="무엇을 함께 생각해 볼까요?" required></textarea>
+                  placeholder="무엇을 함께 생각해 볼까요? (Enter 전송 · Shift+Enter 줄바꿈)"
+                  aria-describedby="message-help" required></textarea>
+        <span id="message-help" class="muted">Enter 전송 · Shift+Enter 줄바꿈</span>
         <div><span id="work-state">준비됨 · 도구 실행 비활성화</span>
           <button id="request-analyze" type="button" hidden>요청 분석 · 로컬 Ollama</button>
           <button id="send" type="submit" class="primary">보내기 ↑</button></div>
