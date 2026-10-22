@@ -43,6 +43,9 @@ async function api(path, options = {}) {
 
 function showAuth() {
   csrf = ""; activeConversation = null; resetRequestPreview();
+  $("rlaif-consent").checked = false; $("rlaif-preview-consent").checked = false;
+  $("rlaif-judge-result").textContent = "";
+  for (const id of ["rlaif-prompt", "rlaif-completion", "rlaif-reference", "rlaif-parent"]) $(id).value = "";
   clearInterval(workersTimer); $("workers-dialog").close();
   $("req-eval-dialog").close(); $("req-eval-consent").checked = false;
   for (const id of ["req-eval-cases", "req-eval-analyses", "req-eval-custom", "req-eval-name"]) {
@@ -403,7 +406,10 @@ async function loadLearning() {
   await loadAutoPolicy();
   await loadLifecycle();
   const status = await api("/api/learning/status");
-  $("learning-status").textContent = "SFT + QLoRA · GPU 실행 " +
+  $("learning-method").querySelector('[value="rlaif_grpo_qlora"]').disabled = !status.rlaif_enabled;
+  $("rlaif-judge-status").textContent = "RLAIF: " + (status.rlaif_enabled ? "활성화" : "비활성화") +
+    " · 평가 모델: " + (status.rlaif_judge_model || "미설정") + " · CPU 평가 요청 · 실제 연결 미확인";
+  $("learning-status").textContent = "SFT / RLAIF + QLoRA · GPU 실행 " +
     (status.training_enabled ? "활성화" : "비활성화") +
     " · HF 조회 " + (status.hf_download_enabled ? "활성화" : "비활성화") +
     " · 학습 모델은 자동 활성화되지 않습니다.";
@@ -411,7 +417,8 @@ async function loadLearning() {
   $("dataset-list").replaceChildren();
   for (const dataset of datasets) {
     const card = document.createElement("article"); card.className = "management-card";
-    const title = document.createElement("strong"); title.textContent = dataset.name + " · " + dataset.state;
+    const title = document.createElement("strong"); title.textContent = dataset.name + " · " + dataset.state +
+      (dataset.plan ? " · " + dataset.plan.method : "");
     const stats = document.createElement("p");
     stats.textContent = "학습 " + dataset.manifest.train_rows + " / 평가 " +
       dataset.manifest.eval_rows + " / 제외 " + dataset.manifest.excluded_rows +
@@ -457,10 +464,18 @@ async function loadLearning() {
     }
     card.append(actionButton("검수 결과 확인 후 학습 승인", async () => {
       if (!inputs.every(input => input.checked)) throw new Error("세 가지 검토 항목을 확인하세요.");
+      const rlaif = $("learning-method").value === "rlaif_grpo_qlora";
+      if (rlaif && (!$("rlaif-consent").checked || !$("benchmark-select").value)) {
+        throw new Error("RLAIF 범위 동의와 별도의 고정 평가 질문 선택이 필요합니다.");
+      }
       await api("/api/learning/datasets/" + dataset.id + "/approve", {
         method: "POST", body: JSON.stringify({
           data_hash: dataset.data_hash, license_reviewed: true, privacy_reviewed: true,
-          model_license_reviewed: true, max_steps: 30, max_length: 512,
+          model_license_reviewed: true, max_steps: rlaif ? Number($("rlaif-steps").value) : 30, max_length: 512,
+          method: $("learning-method").value, rlaif_approved: rlaif && $("rlaif-consent").checked,
+          parent_job_id: rlaif ? ($("rlaif-parent").value.trim() || null) : null,
+          rlaif_max_judge_calls: Number($("rlaif-calls").value),
+          rlaif_max_seconds: Number($("rlaif-seconds").value),
           benchmark_id: $("benchmark-select").value || null
         })
       });
@@ -486,6 +501,10 @@ async function loadLearning() {
     }));
     if (["queued", "blocked"].includes(job.state)) card.append(actionButton("작업 취소", async () => {
       await api("/api/learning/jobs/" + job.id + "/cancel", { method: "POST" }); await loadLearning();
+    }));
+    if (job.report?.method === "direct_rlaif_grpo") card.append(actionButton("보상 기록 확인 · 앞 50개", async () => {
+      const audit = await api("/api/learning/jobs/" + job.id + "/rewards");
+      const pre = document.createElement("pre"); pre.textContent = JSON.stringify(audit, null, 2); card.append(pre);
     }));
     $("training-jobs").append(card);
   }
@@ -1043,3 +1062,18 @@ $("request-analyze").addEventListener("click", async () => {
   } catch (error) { notify(error.message); }
   finally { setBusy(false); }
 });
+
+$("rlaif-judge-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = event.submitter; if (button) button.disabled = true;
+  try {
+    const result = await api("/api/learning/rlaif/judge-preview", {method:"POST", body:JSON.stringify({
+      approved:$("rlaif-preview-consent").checked, prompt:$("rlaif-prompt").value,
+      completion:$("rlaif-completion").value, reference:$("rlaif-reference").value})});
+    if (!$("workspace").hidden) $("rlaif-judge-result").textContent = JSON.stringify(result, null, 2);
+  } catch (error) { notify(error.message); }
+  finally { if (button) button.disabled = false; }
+});
+for (const id of ["learning-method", "rlaif-steps", "rlaif-calls", "rlaif-seconds", "rlaif-parent", "benchmark-select"]) {
+  $(id).addEventListener("change", () => { $("rlaif-consent").checked = false; });
+}

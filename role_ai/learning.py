@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import delete, select, update
 
 from role_ai.artifacts import ArtifactStore, canonical, digest, storage_lock
@@ -15,6 +15,7 @@ from role_ai.models import BenchmarkSuite, DatasetSnapshot, TrainingJob
 from role_ai.quality import full_review, suite_hash
 from role_ai.providers import ProviderUnavailable
 from role_ai.training import model_fingerprint
+from role_ai.ai_judge import AIJudge, JudgeError, RUBRIC
 
 LICENSES = {"apache-2.0", "mit", "cc-by-4.0", "cc0-1.0"}
 
@@ -74,8 +75,31 @@ class Decision(BaseModel):
     risks: list[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=10)
 
 
+class JudgePreview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    approved: bool = Field(default=False, strict=True)
+    prompt: str = Field(min_length=1, max_length=2000)
+    completion: str = Field(min_length=1, max_length=2000)
+    reference: str = Field(default='', max_length=2000)
+
+    @field_validator('prompt', 'completion')
+    @classmethod
+    def nonblank(cls, value):
+        if not value.strip():
+            raise ValueError('질문과 답변은 비어 있을 수 없습니다.')
+        return value
+
+
 class Approval(BaseModel):
-    target_skill: Literal["developer", "meeting", "professor", "counselor"] = "developer"
+    model_config = ConfigDict(extra='forbid')
+    method: Literal['sft_qlora', 'rlaif_grpo_qlora'] = 'sft_qlora'
+    parent_job_id: str | None = Field(default=None, min_length=36, max_length=36)
+    rlaif_approved: bool = Field(default=False, strict=True)
+    rlaif_max_judge_calls: int = Field(default=64, ge=5, le=256)
+    rlaif_max_seconds: int = Field(default=1800, ge=60, le=7200)
+    rlaif_max_completion_length: int = Field(default=64, ge=16, le=128)
+    rlaif_minimum_benchmark_score: float = Field(default=0.5, gt=0, le=1, allow_inf_nan=False)
+    target_skill: Literal["developer", "code_tester", "meeting", "professor", "counselor"] = "developer"
     data_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
     license_reviewed: bool
     privacy_reviewed: bool
@@ -156,11 +180,32 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
 
     @router.get("/status")
     def status(user=Depends(owner)):
-        return {"method": "sft_qlora", "training_enabled": settings.training_enabled,
+        return {"method": "sft_qlora", "methods": ["sft_qlora", "rlaif_grpo_qlora"],
+                "rlaif_enabled": settings.rlaif_enabled, "rlaif_rubric": RUBRIC,
+                "rlaif_judge_model": settings.rlaif_judge_model,
+                "training_enabled": settings.training_enabled,
                 "hf_download_enabled": settings.hf_download_enabled,
                 "max_rows": 100, "max_scan_bytes": settings.hf_max_scan_bytes,
                 "artifact_quota_bytes": settings.artifact_quota_bytes,
                 "automatic_activation": False, "semantic_memory_search": False}
+
+    @router.post('/rlaif/judge-preview')
+    def judge_preview(body: JudgePreview, user=Depends(owner)):
+        if not body.approved:
+            raise HTTPException(400, '이번 요청을 로컬 평가 AI로 보내는 동의가 필요합니다.')
+        judge = None
+        try:
+            judge = AIJudge(settings, max_calls=4, max_seconds=240)
+            calibration = judge.calibrate()
+            if not calibration['passed']:
+                raise JudgeError('평가 AI 기준 확인에 실패했습니다.')
+            return {'calibration': calibration, 'result': judge.score(body.prompt, body.completion, body.reference),
+                    'execution': 'judge_only', 'training_started': False, 'persisted': False}
+        except JudgeError as exc:
+            raise HTTPException(503, str(exc)) from None
+        finally:
+            if judge:
+                judge.close()
 
     @router.get("/datasets")
     def listing(user=Depends(owner), repo=Depends(repository)):
@@ -300,9 +345,17 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
             raise HTTPException(422, "데이터/모델 이용 조건과 개인정보 검토를 확인하세요.")
         if manifest["source"]["license"] not in LICENSES:
             raise HTTPException(422, "이 버전의 허용 라이선스 목록에 없거나 확인되지 않았습니다.")
+        rlaif = body.method == 'rlaif_grpo_qlora'
+        if rlaif and (not settings.rlaif_enabled or not body.rlaif_approved):
+            raise HTTPException(403, 'RLAIF 활성화와 별도의 학습 범위 동의가 필요합니다.')
+        if rlaif and (not body.benchmark_id or body.max_steps > 20
+                      or body.rlaif_max_judge_calls < 3 + 2 * body.max_steps):
+            raise HTTPException(422, 'RLAIF는 고정 평가 필수, 최대 20스텝, 기준 검사와 스텝당 2회 이상의 평가 한도가 필요합니다.')
+        if not rlaif and body.parent_job_id:
+            raise HTTPException(422, 'SFT 부모 어댑터 연결은 RLAIF에서만 지원합니다.')
         if not all(reviews.get(stage, {}).get("verdict") == "pass"
                    and reviews[stage]["data_hash"] == item.data_hash
-                   for stage in ["teacher", "reviewer", "orchestrator"]):
+                   for stage in (["teacher", "reviewer"] if rlaif else ["teacher", "reviewer", "orchestrator"])):
             raise HTTPException(409, "Teacher·Reviewer·오케스트레이터 검수를 먼저 완료하세요.")
         if any(reviews[stage].get("scope") != "all_selected_train_and_eval_samples"
                for stage in ["teacher", "reviewer"]):
@@ -328,12 +381,31 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
             fingerprint = model_fingerprint(settings.training_base_model_path)
         except (OSError, ValueError) as exc:
             raise HTTPException(503, str(exc)) from None
-        plan = {"base_model_fingerprint": fingerprint, **body.model_dump(), "method": "sft_qlora", "base_model_revision":
+        plan = {"base_model_fingerprint": fingerprint, **body.model_dump(), "base_model_revision":
                 settings.training_base_model_revision, "base_model_path": settings.training_base_model_path,
                 "rank": 8, "batch_size": 1, "gradient_accumulation": 8, "benchmark": benchmark}
+        if rlaif:
+            judge = None
+            try:
+                judge = AIJudge(settings, max_calls=3, max_seconds=240)
+                calibration = judge.calibrate()
+                if not calibration['passed']:
+                    raise JudgeError('평가 AI의 기준 검사에 실패했습니다.')
+                plan.update(gradient_accumulation=2, num_generations=2, kl_beta=0.02,
+                            rlaif_judge=judge.identity, rlaif_rubric=RUBRIC,
+                            rlaif_calibration=calibration)
+                if body.parent_job_id:
+                    from role_ai.training import parent_adapter
+                    plan.update(parent_adapter(repo.db, store, user.id, body.parent_job_id, fingerprint))
+            except (JudgeError, ValueError, OSError):
+                raise HTTPException(503, '평가 AI 또는 부모 모델을 검증하지 못했습니다. 설정과 평가 결과를 확인하세요.') from None
+            finally:
+                if judge:
+                    judge.close()
         approval_hash = digest({"plan": plan, "reviews": reviews, "data_hash": item.data_hash})
         changed = repo.db.execute(update(DatasetSnapshot).where(
-            DatasetSnapshot.id == sid, DatasetSnapshot.revision == item.revision
+            DatasetSnapshot.id == sid, DatasetSnapshot.revision == item.revision,
+            DatasetSnapshot.state.in_(["staged", "reviewed", "approved"])
         ).values(plan=canonical(plan), approval_hash=approval_hash, state="approved",
                  revision=item.revision + 1).execution_options(synchronize_session=False))
         if changed.rowcount != 1:
@@ -351,6 +423,8 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
         if item.state != "approved" or not item.approval_hash:
             raise HTTPException(409, "승인된 학습 계획이 필요합니다.")
         read_snapshot(item)
+        if json.loads(item.plan or '{}').get('method') == 'rlaif_grpo_qlora' and not settings.rlaif_enabled:
+            raise HTTPException(403, 'RLAIF 실행이 비활성화되어 있습니다.')
         changed = repo.db.execute(update(DatasetSnapshot).where(
             DatasetSnapshot.id == sid, DatasetSnapshot.state == "approved",
             DatasetSnapshot.approval_hash == item.approval_hash
@@ -362,6 +436,26 @@ def learning_router(authenticated, repository, settings, providers, ledger, hf_t
         repo.db.add(job)
         repo.db.commit()
         return job_dict(job)
+
+    @router.get('/jobs/{jid}/rewards')
+    def rewards(jid: str, user=Depends(owner), repo=Depends(repository)):
+        job = repo.db.scalar(select(TrainingJob).where(TrainingJob.id == jid, TrainingJob.user_id == user.id))
+        if not job:
+            raise HTTPException(404, '학습 작업을 찾을 수 없습니다.')
+        root = store.path(user.id, job.dataset_id) / ('run-' + job.id)
+        path = root / 'rewards.jsonl'
+        try:
+            if root.is_symlink() or path.is_symlink() or not path.is_file() or path.stat().st_size > 4194304:
+                raise ValueError('Unavailable audit')
+            from role_ai.ai_judge import audit_digest
+            expected = json.loads(job.report).get('reward_audit_hash')
+            if expected and audit_digest(path) != expected:
+                raise ValueError('Changed audit')
+            rows = [json.loads(line) for line in path.read_text('utf-8').splitlines()]
+        except (OSError, ValueError):
+            raise HTTPException(409, '보상 기록이 없거나 무결성을 확인하지 못했습니다.') from None
+        return {'job_id': jid, 'count': len(rows), 'records': rows[:50],
+                'returned': min(50, len(rows)), 'complete_run': bool(expected)}
 
     @router.get("/jobs")
     def jobs(user=Depends(owner), repo=Depends(repository)):

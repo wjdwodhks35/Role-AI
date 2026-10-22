@@ -39,6 +39,21 @@ def model_fingerprint(directory):
     return digestor.hexdigest()
 
 
+
+def parent_adapter(db, store, uid, jid, base_fingerprint):
+    job = db.get(TrainingJob, jid)
+    if not job or job.user_id != uid or job.state != 'evaluated':
+        raise ValueError('소유한 평가 완료 SFT 작업이 필요합니다.')
+    report = json.loads(job.report)
+    if report.get('execution') != 'gpu_sft_qlora' or report.get('base_model_fingerprint') != base_fingerprint:
+        raise ValueError('동일 기반 모델의 실제 SFT 어댑터만 사용할 수 있습니다.')
+    store.read(uid, job.dataset_id, report['data_hash'])
+    adapter = store.path(uid, job.dataset_id) / ('run-' + jid) / 'adapter'
+    if adapter.parent.is_symlink() or adapter.is_symlink() or model_fingerprint(adapter) != report['adapter_fingerprint']:
+        raise ValueError('부모 어댑터가 변경됐습니다.')
+    return {'parent_adapter_path': str(adapter), 'parent_adapter_fingerprint': report['adapter_fingerprint']}
+
+
 def run_sft(plan, train, evaluation, output):
     import torch
     try:
@@ -173,7 +188,7 @@ def _run_sft(plan, train, evaluation, output):
     }
 
 
-def run_one(settings, trainer=run_sft, monitor=None):
+def run_one(settings, trainer=None, monitor=None):
     if not settings.training_enabled or settings.mode != 'local':
         raise ValueError('ROLE_AI_TRAINING_ENABLED가 false입니다. GPU 학습을 실행하지 않습니다.')
     if monitor is None:
@@ -208,6 +223,7 @@ def _run_one(settings, trainer, monitor):
                 jid, uid, sid, approved = job.id, job.user_id, job.dataset_id, job.approval_hash
                 item = db.get(DatasetSnapshot, sid)
                 output = None
+                plan = {}
                 monitor.start_job(jid, uid)
                 try:
                     monitor.stage("validating_approval")
@@ -221,6 +237,19 @@ def _run_one(settings, trainer, monitor):
                             != Path(settings.training_base_model_path).resolve()
                             or model_fingerprint(plan["base_model_path"]) != plan["base_model_fingerprint"]):
                         raise ValueError("승인된 기반 모델이 변경됐습니다.")
+                    method = plan.get('method')
+                    if method not in {'sft_qlora', 'rlaif_grpo_qlora'}:
+                        raise ValueError('지원하지 않는 학습 방법입니다.')
+                    if method == 'rlaif_grpo_qlora':
+                        from role_ai.ai_judge import RUBRIC, RUBRIC_HASH
+                        if (not settings.rlaif_enabled or plan.get('rlaif_rubric') != RUBRIC
+                                or plan.get('rlaif_judge', {}).get('rubric_hash') != RUBRIC_HASH
+                                or not plan.get('benchmark') or not plan.get('rlaif_approved')):
+                            raise ValueError('RLAIF 정책과 승인 내용을 확인하세요.')
+                        if plan.get('parent_job_id') and parent_adapter(db, store, uid, plan['parent_job_id'],
+                                plan['base_model_fingerprint']) != {k: plan[k] for k in
+                                ['parent_adapter_path', 'parent_adapter_fingerprint']}:
+                            raise ValueError('부모 어댑터가 변경됐습니다.')
                     train, evaluation, _ = store.read(uid, sid, item.data_hash)
                     try:
                         limits = preflight(settings, "training")
@@ -228,12 +257,32 @@ def _run_one(settings, trainer, monitor):
                         raise ResourcesBusy(str(exc)) from None
                     item.state = "running"
                     db.commit()
+                    current_bytes = sum(p.stat().st_size for p in store.root.rglob('*') if p.is_file())
+                    if current_bytes >= settings.artifact_quota_bytes:
+                        raise ResourcesBusy('artifact 저장 공간 한도를 확인하세요.')
                     output = store.path(uid, sid) / ("run-" + jid)
+                    if output.exists() or output.is_symlink():
+                        # Preserve only this job's known partial attempt; never overwrite an existing directory.
+                        if (json.loads(job.report).get('partial_output') != output.name
+                                or output.is_symlink() or not output.is_dir()):
+                            raise ValueError('기존 실행 결과를 덮어쓰지 않습니다.')
+                        from uuid import uuid4
+                        output.rename(output.with_name(output.name + '-attempt-' + str(uuid4())))
                     output.mkdir(exist_ok=False)
                     monitor.stage("training_preparation")
-                    report = trainer({**plan, "resource_limits": limits, "_worker_monitor": monitor}, train, evaluation, output)
+                    executor = trainer
+                    if executor is None:
+                        if method == 'rlaif_grpo_qlora':
+                            from role_ai.rlaif import run_rlaif
+                            executor = run_rlaif
+                        else:
+                            executor = run_sft
+                    report = executor({**plan, "resource_limits": limits, "_worker_monitor": monitor,
+                                       "_rlaif_settings": settings,
+                                       "_reward_byte_limit": min(4194304, settings.artifact_quota_bytes - current_bytes)},
+                                      train, evaluation, output)
                     monitor.stage("validating_result")
-                    if report.get("execution") == "gpu_sft_qlora":
+                    if report.get("execution") in {"gpu_sft_qlora", "gpu_rlaif_grpo_qlora"}:
                         report["adapter_fingerprint"] = model_fingerprint(output / "adapter")
                         report["base_model_fingerprint"] = plan["base_model_fingerprint"]
                         report["data_hash"] = item.data_hash
@@ -251,7 +300,9 @@ def _run_one(settings, trainer, monitor):
                 except ResourcesBusy as exc:
                     if output is not None and output.is_dir() and not any(output.iterdir()):
                         output.rmdir()
-                    report = {"reason": str(exc), "activation": "not_activated"}
+                    report = {"reason": str(exc), "activation": "not_activated",
+                              "partial_output": (output.name if output is not None and output.is_dir()
+                                                 else json.loads(job.report).get("partial_output") if output is None else None)}
                     final_state, dataset_state = "blocked", "queued"
                 except Exception as exc:
                     report = {"reason": "학습 실행 또는 파일 검증에 실패했습니다.",
@@ -265,6 +316,9 @@ def _run_one(settings, trainer, monitor):
                     report = {"reason": "사용자 취소 또는 Worker 종료 요청", "activation": "not_activated"}
                     final_state, dataset_state = "cancelled", "reviewed"
                     item.plan, item.approval_hash = None, None
+                if isinstance(plan, dict) and plan.get('method') == 'rlaif_grpo_qlora':
+                    report.setdefault('method', 'direct_rlaif_grpo')
+                    report['approved_plan_hash'] = approved
                 job = db.get(TrainingJob, jid)
                 job.state, job.report = final_state, canonical(report)
                 item.state = dataset_state

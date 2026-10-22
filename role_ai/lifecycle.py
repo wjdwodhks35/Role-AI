@@ -108,7 +108,7 @@ def lifecycle_router(authenticated, repository, settings):
         if not job:
             raise HTTPException(404, "모델 버전을 찾을 수 없습니다.")
         report = json.loads(job.report)
-        if job.state != "evaluated" or report.get("execution") != "gpu_sft_qlora":
+        if job.state != "evaluated" or report.get("execution") not in {"gpu_sft_qlora", "gpu_rlaif_grpo_qlora"}:
             raise HTTPException(409, "실제 GPU 학습과 평가가 완료된 버전만 선택할 수 있습니다.")
         benchmark = report.get("benchmark") or {}
         try:
@@ -119,6 +119,11 @@ def lifecycle_router(authenticated, repository, settings):
                 raise ValueError("Invalid metrics")
             if min(before, after) < 0 or not (0 <= old <= new <= 1) or after > before:
                 raise ValueError("Evaluation regressed")
+            if report.get('execution') == 'gpu_rlaif_grpo_qlora':
+                if (report.get('policy_changed') is not True or report.get('optimizer_steps', 0) < 1
+                        or report.get('reward_records', 0) < 2 or not report.get('calibration', {}).get('passed')
+                        or not (0 < report['minimum_benchmark_score'] <= new)):
+                    raise ValueError('RLAIF learning/evaluation gate failed')
             item = repo.db.get(DatasetSnapshot, job.dataset_id)
             if not item or item.user_id != uid:
                 raise ValueError("Dataset missing")
@@ -126,6 +131,11 @@ def lifecycle_router(authenticated, repository, settings):
             adapter = store.path(uid, item.id) / ("run-" + job.id) / "adapter"
             if adapter.parent.is_symlink() or adapter.is_symlink():
                 raise ValueError("Symbolic adapter")
+            if report.get('execution') == 'gpu_rlaif_grpo_qlora':
+                from role_ai.ai_judge import audit_digest
+                audit = adapter.parent / 'rewards.jsonl'
+                if audit.is_symlink() or audit_digest(audit) != report['reward_audit_hash']:
+                    raise ValueError('Reward audit changed')
             if model_fingerprint(adapter) != report["adapter_fingerprint"]:
                 raise ValueError("Adapter changed")
         except (ValueError, OSError, KeyError, TypeError):
