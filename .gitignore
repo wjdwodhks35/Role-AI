@@ -36,3 +36,6 @@ node_modules/
 Thumbs.db
 
 qa/results/
+
+# Private local security state, access tokens and logs
+.codex-local/
