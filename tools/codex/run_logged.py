@@ -89,45 +89,58 @@ def secure_directory(path: Path) -> None:
            for p in (path, path.parent)):
         raise OSError("Refusing a linked log directory")
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    marker = path / ".role-ai-command-logs"
-    signature = b"role-ai-command-logs-v1\n"
-    if marker.is_symlink() or (marker.exists() and marker.read_bytes() != signature):
-        raise OSError("Invalid log ownership marker")
-    if not marker.exists() and any(path.iterdir()):
-        raise OSError("Refusing to change permissions of an unowned nonempty directory")
+    lock = path / ".role-ai-log-setup"
+    deadline = time.monotonic() + 10
+    while True:
+        try:
+            lock.mkdir(mode=0o700)
+            break
+        except FileExistsError:
+            if lock.is_symlink() or time.monotonic() >= deadline:
+                raise OSError("Log-directory initialization is locked")
+            time.sleep(0.02)
     try:
-        private_write(marker, signature)
-    except FileExistsError:
-        if marker.read_bytes() != signature:
-            raise OSError("Invalid concurrent log ownership marker")
-    if os.name == "nt":
-        # Read identities only; icacls modifies the DACL without SACL privileges.
-        quoted_path = str(path).replace("'", "''")
-        script = (
-            "$ErrorActionPreference='Stop'; "
-            f"$acl=Get-Acl -LiteralPath '{quoted_path}'; "
-            "@{current=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; "
-            "identities=@($acl.Access | ForEach-Object { $_.IdentityReference.Translate("
-            "[System.Security.Principal.SecurityIdentifier]).Value })} | ConvertTo-Json -Compress"
-        )
-        query = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-            capture_output=True, check=True,
-        )
-        identities = json.loads(query.stdout)
-        current = identities["current"]
-        subprocess.run(
-            ["icacls", str(path), "/inheritance:r", "/grant:r", f"*{current}:(OI)(CI)F"],
-            capture_output=True, check=True,
-        )
-        others = sorted(set(identities["identities"]) - {current})
-        if others:
-            subprocess.run(
-                ["icacls", str(path), "/remove", *["*" + sid for sid in others]],
+        marker = path / ".role-ai-command-logs"
+        signature = b"role-ai-command-logs-v1\n"
+        if marker.is_symlink() or (marker.exists() and marker.read_bytes() != signature):
+            raise OSError("Invalid log ownership marker")
+        if not marker.exists() and any(p != lock for p in path.iterdir()):
+            raise OSError("Refusing to change permissions of an unowned nonempty directory")
+        try:
+            private_write(marker, signature)
+        except FileExistsError:
+            if marker.read_bytes() != signature:
+                raise OSError("Invalid concurrent log ownership marker")
+        if os.name == "nt":
+            # Read identities only; icacls modifies the DACL without SACL privileges.
+            quoted_path = str(path).replace("'", "''")
+            script = (
+                "$ErrorActionPreference='Stop'; "
+                f"$acl=Get-Acl -LiteralPath '{quoted_path}'; "
+                "@{current=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; "
+                "identities=@($acl.Access | ForEach-Object { $_.IdentityReference.Translate("
+                "[System.Security.Principal.SecurityIdentifier]).Value })} | ConvertTo-Json -Compress"
+            )
+            query = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
                 capture_output=True, check=True,
             )
-    else:
-        os.chmod(path, 0o700)
+            identities = json.loads(query.stdout)
+            current = identities["current"]
+            subprocess.run(
+                ["icacls", str(path), "/inheritance:r", "/grant:r", f"*{current}:(OI)(CI)F"],
+                capture_output=True, check=True,
+            )
+            others = sorted(set(identities["identities"]) - {current})
+            if others:
+                subprocess.run(
+                    ["icacls", str(path), "/remove", *["*" + sid for sid in others]],
+                    capture_output=True, check=True,
+                )
+        else:
+            os.chmod(path, 0o700)
+    finally:
+        lock.rmdir()
 
 
 def private_write(path: Path, data: bytes) -> None:
