@@ -10,7 +10,7 @@ Windows 바탕 화면의 `RoleAI-Launcher` 폴더에서 `Start-RoleAI.cmd`를 �
 2. WSL root로 Docker를 시작하고 기존 Compose 세 파일의 API와 대화용 OpenClaw를 기존 이미지로 시작한다.
 3. PC Gateway가 정상 응답하면 재사용한다. 아니면 `serveradmin`의 별도 최소화 WSL 창에서 실행한다. **이 창은 닫지 않는다.**
 4. Windows에서 API/Gateway 접속과 WSL의 설정된 Ollama 모델을 확인하고 Companion 시작을 요청한다.
-5. Role-AI 브라우저를 연다. 오류가 있으면 메인 창에 표시한다.
+5. 주소창·탭이 없는 Role-AI 전용 창을 연다. 오류가 있으면 메인 창에 표시한다.
 
 기존 컨테이너는 기본적으로 재생성하지 않는다. 단, OpenClaw가 현재 API와 다른 컨테이너의 네트워크를 참조하면 OpenClaw만 기존 이미지로 재생성한다. 이미지가 없으면 실패하며 다운로드하거나 빌드하지 않는다. API·데이터 볼륨·토큰·승인 정책·Ollama 주소는 변경하지 않는다.
 
@@ -25,3 +25,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Launcher.ps1 -CheckOnl
 브라우저를 열지 않고 실제 시작을 검사하려면 `-NoBrowser`를 사용한다. `settings.json`의 `OpenBrowser`를 false로 바꿔도 된다. Windows 로그인 자동 실행은 등록하지 않는다.
 
 소스는 `tools/windows-launcher`에서 관리하며 Windows에 배포할 때 전체 파일을 복사한다. `.ps1`은 Windows PowerShell 5.1용 UTF-8 BOM/CRLF, `.cmd`는 CRLF, Linux 스크립트는 LF를 유지한다.
+
+전용 창은 설치된 Microsoft Edge의 앱 모드를 사용한다. 별도 설치형 네이티브 앱은 아니며 기존 Role-AI 웹 UI를 독립된 창으로 표시한다. 기본 브라우저 설정은 변경하지 않는다. 창을 닫아도 WSL 서버는 계속 실행된다.
+
+전용 창의 로그인·쿠키는 `%LOCALAPPDATA%\RoleAI\DesktopProfile`에 별도로 보관하므로 처음에는 다시 로그인해야 한다. 이 폴더를 삭제하면 전용 창의 로그인 정보가 초기화된다. 기존 Chrome/Edge 프로필은 사용하지 않는다.
+
+`settings.json`의 `WindowMode`는 기본값 `desktop`이며 `browser`로 변경하면 기본 브라우저에서 열린다. 기존 `OpenBrowser: false` 또는 `-NoBrowser`는 두 모드 모두 창 열기를 생략한다.

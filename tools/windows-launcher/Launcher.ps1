@@ -94,7 +94,11 @@ try {
         try { Invoke-WslInput serveradmin 'python3 -' (Get-Content -Raw -LiteralPath (Join-Path $root 'check-node.py')) }
         catch { Write-Warning 'Role-AI 서버는 사용할 수 있습니다. PC 제어를 사용하려면 Companion을 다시 연결하세요.' }
         Write-Host 'AI를 통한 Windows 명령 실행은 별도 검증이 필요합니다.'
-        if ($settings.OpenBrowser -and -not $NoBrowser) { Start-Process 'http://127.0.0.1:8000' }
+        if ($settings.OpenBrowser -and -not $NoBrowser) {
+            $windowMode = 'desktop'
+            if ($settings.PSObject.Properties.Name -contains 'WindowMode') { $windowMode = $settings.WindowMode }
+            & (Join-Path $root 'Open-RoleAI.ps1') -Mode $windowMode
+        }
     }
 } catch {
     Write-Host ("ERROR: " + $_.Exception.Message) -ForegroundColor Red

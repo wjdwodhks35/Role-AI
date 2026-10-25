@@ -1,4 +1,5 @@
 {
   "Distro": "",
-  "OpenBrowser": true
+  "OpenBrowser": true,
+  "WindowMode": "desktop"
 }
