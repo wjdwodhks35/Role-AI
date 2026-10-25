@@ -36,3 +36,6 @@ node_modules/
 Thumbs.db
 
 qa/results/
+
+# Local Codex command logs and instruction backups (may contain secrets)
+.codex-local/
