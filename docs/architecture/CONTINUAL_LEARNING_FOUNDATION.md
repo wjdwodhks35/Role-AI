@@ -39,3 +39,5 @@ Phase 0의 전체 실측 완료나 Phase 1의 전문 에이전트 실행 완료�
 - 구성 조회의 미인증/비소유자/public 모드 차단, 수정 메서드 차단, 모델 호출 없음·DB 스키마 유지 확인. 일반 채팅의 제공자 호출은 기존처럼 1회이며 registry dispatch가 추가되지 않았다.
 - Ruff·compileall·JavaScript 구문·기존 인증/한글 입력 Node 검사 통과. 실제 CLI로 새 로컬 기준선 JSON 저장 확인. 새 모델 호출·가중치 학습·운영 변경은 수행하지 않았다.
 - 의존성의 TestClient deprecation 경고 1건. 전체 서비스의 성능 향상·실제 OpenClaw 동작이나 Phase 0 실측 완료를 주장하는 검증이 아니다.
+
+기존 Excel QA 계획의 210개 시나리오는 보존하고 신규 구성·기준선 18개 시나리오를 추가했습니다. `qa/update_foundation_plan.py`는 중복 추가 없이 계획과 요구사항 커버리지를 갱신하며, 기존 strict QA 검사를 유지합니다.
