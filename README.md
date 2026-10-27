@@ -1,5 +1,10 @@
 # Role-AI
 
+**현재 1순위는 개발자 모드 AI 완성입니다.** 사용자와 대화하고 웹 근거를 읽으며,
+지시에 따라 Role-AI 개발 코드를 수정·테스트·PR 처리하는 에이전트를 우선합니다.
+[변경된 로드맵](docs/roadmap.md)과 [완료 기준](docs/architecture/DEVELOPER_AGENT_PRIORITY.md)을 참고하세요.
+이 항목은 개발 목표이며 현재 해당 기능의 완성을 뜻하지 않습니다.
+
 지속 학습 Phase 0/1 기반과 GitHub 개발·병합 절차는
 [구현·검증 계획](docs/architecture/CONTINUAL_LEARNING_FOUNDATION.md)을 참고하세요.
 `GET /api/agents`는 로컬 소유자에게 여섯 역할의 정의만 제공합니다.

@@ -1,5 +1,9 @@
 # Role-AI 하이브리드 설계
 
+> 2026-10-27 우선순위 변경: 개발자 모드 AI의 대화·웹 읽기·지시 기반 자기 저장소 수정·검증을 먼저 완성한다.
+> [현재 로드맵](roadmap.md)과 [개발자 모드 목표/완료 기준](architecture/DEVELOPER_AGENT_PRIORITY.md)이 우선하며,
+> 아래 초기 설계의 구현 상태는 현재 실행 환경을 대신하는 증거가 아니다.
+
 ## 현재 구현과 최종 목표
 
 현재 기본 경로: 브라우저 → FastAPI 인증/대화 → ProviderAssistant → Ollama 또는 명시적 Mock.
