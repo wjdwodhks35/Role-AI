@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "max_local_active": 1,
+  "agents": [
+    {
+      "id": "conversation",
+      "mode": "definition_only",
+      "model_ref": "current_local",
+      "capabilities": [
+        "conversation.read"
+      ],
+      "prompt_version": "v1",
+      "max_steps": 1,
+      "timeout_seconds": 60
+    },
+    {
+      "id": "coding",
+      "mode": "definition_only",
+      "model_ref": "coding_local",
+      "capabilities": [
+        "code.propose",
+        "sandbox.request"
+      ],
+      "prompt_version": "v1",
+      "max_steps": 1,
+      "timeout_seconds": 60
+    },
+    {
+      "id": "research",
+      "mode": "definition_only",
+      "model_ref": "current_local",
+      "capabilities": [
+        "sources.discover"
+      ],
+      "prompt_version": "v1",
+      "max_steps": 1,
+      "timeout_seconds": 60
+    },
+    {
+      "id": "knowledge",
+      "mode": "definition_only",
+      "model_ref": "current_local",
+      "capabilities": [
+        "knowledge.search"
+      ],
+      "prompt_version": "v1",
+      "max_steps": 1,
+      "timeout_seconds": 60
+    },
+    {
+      "id": "learning",
+      "mode": "definition_only",
+      "model_ref": "current_local",
+      "capabilities": [
+        "dataset.curate"
+      ],
+      "prompt_version": "v1",
+      "max_steps": 1,
+      "timeout_seconds": 60
+    },
+    {
+      "id": "evaluation",
+      "mode": "definition_only",
+      "model_ref": "current_local",
+      "capabilities": [
+        "evaluation.run"
+      ],
+      "prompt_version": "v1",
+      "max_steps": 1,
+      "timeout_seconds": 60
+    }
+  ]
+}
