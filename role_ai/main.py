@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
 from role_ai.assistant import AssistantContext, AssistantManager, memory_prompt
+from role_ai.agent_registry import AgentRegistry, agents_router
 from role_ai.auto_approval import policy_router
 from role_ai.billing import BillingLedger
 from role_ai.body_limit import BodyLimitMiddleware
@@ -53,6 +54,7 @@ def message_dict(item):
 
 def create_app(settings: Settings | None = None, providers=None, gateway_transport=None, openai_transport=None, hf_transport=None, embedding_transport=None):
     settings = settings or Settings()
+    agent_registry = AgentRegistry(settings)
     engine, factory = build_database(settings.database_url)
     ledger = BillingLedger(settings, factory)
     providers = providers or ProviderManager(settings, ledger=ledger, openai_transport=openai_transport)
@@ -86,6 +88,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     app.state.providers = providers
     app.state.billing = ledger
     app.state.semantic = semantic
+    app.state.agent_registry = agent_registry
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -134,6 +137,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             yield
 
     app.include_router(lifecycle_router(authenticated, repository, settings))
+    app.include_router(agents_router(authenticated, settings, agent_registry))
     app.include_router(gpu_router(authenticated, settings))
     app.include_router(request_analysis_router(authenticated, settings, providers))
     app.include_router(evaluation_router(authenticated, repository, settings, providers))

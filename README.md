@@ -1,5 +1,10 @@
 # Role-AI
 
+지속 학습 Phase 0/1 기반과 GitHub 개발·병합 절차는
+[구현·검증 계획](docs/architecture/CONTINUAL_LEARNING_FOUNDATION.md)을 참고하세요.
+`GET /api/agents`는 로컬 소유자에게 여섯 역할의 정의만 제공합니다.
+에이전트 실행·모델 교체·학습·운영 배포를 활성화하지 않습니다.
+
 사용자 데이터와 권한을 관리하는 FastAPI 플랫폼 위에 OpenClaw Assistant Engine,
 교체 가능한 LLM Provider, 전문 Skill을 연결하는 개인용 AI 비서 프로젝트입니다.
 이 저장소의 코드는 설계 기반 **새로운 Phase 1 구현**이며, 확보되지 않은 기존 소스의 복원본이 아닙니다.
@@ -143,11 +148,11 @@ Phase 1 DB는 자동 create_all로 초기화합니다. 스키마 변경 전 Alem
 
 ## Git Flow
 
-기존 main의 초기 커밋을 유지합니다. dev는 해당 커밋에서 생성하고
-Phase 1은 feature/project-bootstrap에서 개발합니다.
-PR 대상은 dev이며 사용자 승인 없이 병합하지 않습니다.
-main은 검증된 릴리스만 반영합니다. 후속 기능은 독립적인 feature/*,
-버그 수정은 fix/* 브랜치를 사용합니다.
+최신 dev에서 독립 feature/* 브랜치로 기능을 구현하고, 버그 수정은 fix/*를 사용합니다.
+GitHub PR 대상은 dev입니다. 사용자가 이 개발 흐름을 상시 승인했으므로
+관련 테스트와 필수 CI, 충돌·미해결 검토를 확인한 뒤 dev에 병합합니다.
+main은 검증된 릴리스만 반영하며 직접 push/merge하지 않습니다.
+PR 병합과 운영 배포는 별개입니다. 모델 교체·실제 학습·운영 반영은 별도 승인을 받습니다.
 롤백은 승인된 revert PR로 수행하고 DB 변경은 별도 호환성/복원 검증을 합니다.
 
 다음 계획은 [docs/architecture.md](docs/architecture.md) 및

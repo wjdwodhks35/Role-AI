@@ -19,6 +19,7 @@ jobs:
           node-version: "22"
       - run: python -m pip install -e ".[test]"
       - run: ruff check role_ai tests qa
+      - run: python -m pytest -q tests/test_agent_registry.py tests/test_baseline_manifest.py
       - run: python -m compileall -q role_ai
       - run: node --check role_ai/static/app.js
       - run: node qa/check_web_auth.cjs

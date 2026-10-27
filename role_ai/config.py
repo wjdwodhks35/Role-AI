@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = Field(default=86400, ge=300, le=604800)
     registration_enabled: bool = False
     storage_dir: str = "./data/artifacts"
+    agent_config_dir: str = "./config/agents"
+    agent_config_file: str = ""
     artifact_quota_bytes: int = Field(default=104857600, ge=1048576, le=1073741824)
     hf_download_enabled: bool = False
     hf_max_scan_bytes: int = Field(default=2097152, ge=1024, le=10485760)
