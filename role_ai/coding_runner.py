@@ -26,7 +26,8 @@ if mode == "unittest":
         code = 5
     else:
         result = unittest.TextTestRunner(verbosity=2).run(suite)
-        code = 0 if result.wasSuccessful() else 1
+        count = result.testsRun - len(result.skipped) - len(result.expectedFailures)
+        code = (0 if result.wasSuccessful() else 1) if count else 5
 else:
     class Counts:
         count = 0

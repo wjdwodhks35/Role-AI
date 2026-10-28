@@ -5,9 +5,11 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 from role_ai.coding_agent import CodingAgent, runtime_identity
-from role_ai.coding_jobs import CodingJobStore, TaskBudget, TaskCreate, checksum, decode_files
+from role_ai.coding_jobs import CodingJobStore, TaskBudget, TaskCreate, checksum, decode_files, encode_files
+from role_ai.coding_runner import RepositoryTestRunner
 from role_ai.config import Settings
 
 
@@ -62,7 +64,15 @@ def main():
         assert decode_files(result["files"])["sample.xlsx"] == b"PK\x00\xffpreserved"
         assert (repo / "calc.py").read_text() == "answer = 0\n"
         assert git("status", "--porcelain") == ""
+        for files in ({"calc.py": b"answer = 42\n"}, {"test_skip.py": (
+            b"import unittest\n@unittest.skip('fixture')\nclass Skipped(unittest.TestCase):\n"
+            b" def test_skip(self): pass\n")}):
+            trial = {**result, "files": encode_files(files)}
+            trial["revision"] = checksum(trial["files"])
+            evidence = RepositoryTestRunner(settings).run(trial, "role-ai-coding-" + uuid4().hex, root)
+            assert evidence["status"] == "failed" and evidence["count"] == 0, evidence
         print("Actual Docker coding loop: failed test -> checkpoint/pause -> restart/resume -> repaired patch -> passing test")
+        print("Actual Docker acceptance: zero tests and all-skipped suites rejected")
 
 
 if __name__ == "__main__":
