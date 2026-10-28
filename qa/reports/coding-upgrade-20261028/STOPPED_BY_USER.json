@@ -1,0 +1,20 @@
+{
+  "reason": "User requested no more real-model tests; continue implementation and CPU/scripted validation only.",
+  "completed_attempts": 68,
+  "planned_attempts": 104,
+  "utc": "2026-10-28T12:44:11.123645+00:00",
+  "processes": [
+    [
+      17426,
+      "private_ollama"
+    ],
+    [
+      19330,
+      "evaluation"
+    ],
+    [
+      65339,
+      "evaluation"
+    ]
+  ]
+}

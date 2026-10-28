@@ -1,0 +1,51 @@
+{
+  "python": "3.12.3",
+  "edit_source_sha256": "ea8a9bc0faa89f2d84ba7b63868a0f291c7de7ed37a01ec9b9e8002bdb42457e",
+  "results": [
+    {
+      "operation": "exact",
+      "bytes": 1024,
+      "samples": 50,
+      "median_ms": 0.0009,
+      "p95_ms": 0.0011
+    },
+    {
+      "operation": "mismatch",
+      "bytes": 1024,
+      "samples": 50,
+      "median_ms": 0.8828,
+      "p95_ms": 1.2784
+    },
+    {
+      "operation": "exact",
+      "bytes": 10024,
+      "samples": 50,
+      "median_ms": 0.0019,
+      "p95_ms": 0.0042
+    },
+    {
+      "operation": "mismatch",
+      "bytes": 10024,
+      "samples": 50,
+      "median_ms": 7.5786,
+      "p95_ms": 9.2693
+    },
+    {
+      "operation": "exact",
+      "bytes": 100024,
+      "samples": 50,
+      "median_ms": 0.0369,
+      "p95_ms": 0.04
+    },
+    {
+      "operation": "mismatch",
+      "bytes": 100024,
+      "samples": 50,
+      "median_ms": 78.9484,
+      "p95_ms": 89.4747
+    }
+  ],
+  "context_chars": 30399,
+  "context_limit": 16000,
+  "request_preserved": true
+}
