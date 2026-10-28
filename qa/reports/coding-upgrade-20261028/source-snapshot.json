@@ -1,0 +1,5 @@
+{
+  "archive": "source-snapshot.tar.gz",
+  "sha256": "728f3450c2175465d453d4cca5cf17aff0f6587d04863fc23d0a29d47a50211b",
+  "scope": "Runtime Python sources and evaluator files only; frozen before any post-experiment changes."
+}

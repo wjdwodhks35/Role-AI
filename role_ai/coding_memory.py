@@ -4,10 +4,10 @@ The checkpoint keeps raw observations/test output. The model only receives this 
 bounded summary, so it does not forget completed steps or re-read unchanged files.
 """
 
-import json
 import re
 
 from role_ai.coding_jobs import checksum
+from role_ai.coding_context import select
 
 FILE_VIEW_LIMIT = 4000
 FILE_VIEWS_TOTAL = 9000
@@ -21,7 +21,7 @@ FAILURE_LINE = re.compile(
 
 def new_memory():
     return {"done": [], "seen": {}, "targets": [], "last_patch": None, "failed": [],
-            "signatures": [], "no_progress": 0, "repeats": 0, "warning": None}
+            "windows": {}, "signatures": [], "no_progress": 0, "repeats": 0, "warning": None}
 
 
 def memory(state):
@@ -40,19 +40,18 @@ def remember(items, value, limit):
 
 def test_digest(output, limit=1500):
     """Only failure-relevant lines, de-duplicated; raw output stays in the checkpoint."""
-    kept, previous = [], None
+    kept, seen = [], set()
     for line in output.splitlines():
-        if FAILURE_LINE.search(line) and line != previous and "_roleai_runner" not in line:
+        if FAILURE_LINE.search(line) and line not in seen and "_roleai_runner" not in line:
             kept.append(line[:240])
-            previous = line
+            seen.add(line)
     text = "\n".join(kept) or output[-limit:]
     return text[-limit:]
 
 
 def signature(action, state):
     body = action.model_dump(mode="json", exclude={"summary"})
-    if action.action in {"read", "list", "search", "test", "finish"}:
-        body["revision"] = state.get("revision")
+    body["revision"] = state.get("revision")
     return checksum(body)[:16]
 
 
@@ -82,6 +81,12 @@ def next_step(state):
     mem = memory(state)
     if not state.get("plan"):
         return "record a short plan with {\"action\":\"plan\",...}"
+    last = state.get("last_test") or {}
+    if state.get("revision") != state.get("original_revision"):
+        if last.get("revision") != state.get("revision"):
+            return 'run {"action":"test"}; a changed revision needs tests before more planning'
+        if last.get("status") == "passed":
+            return 'finish with {"action":"finish","summary":"..."}; current code already passed'
     editable = state["spec"]["allowed_files"]
     files = state.get("files") or {}
     unread = [p for p in editable if p in files and p not in mem["seen"]]
@@ -115,12 +120,14 @@ def file_views(state, decoded):
             text = raw.decode("utf-8")
         except UnicodeError:
             continue
-        shown = text[:FILE_VIEW_LIMIT]
+        offset = mem["windows"].get(path, 0)
+        shown = text[offset:offset + FILE_VIEW_LIMIT]
         if total + len(shown) > FILE_VIEWS_TOTAL:
             views[path] = {"omitted": "context limit; use read with offset"}
             continue
         total += len(shown)
         views[path] = {"text": shown, "length": len(text), "editable": path in editable,
+                       "offset": offset, "next_offset": offset + len(shown),
                        **({"truncated": True} if len(text) > len(shown) else {})}
     return views
 
@@ -130,19 +137,24 @@ def compact_result(item):
     if not item:
         return None
     result = item.get("result")
-    if item.get("action") == "read" and isinstance(result, dict) and result.get("in_file_views"):
+    if item.get("action") == "read" and isinstance(result, dict):
         result = {k: v for k, v in result.items() if k != "text"}
+    if item.get("action") == "plan" and isinstance(result, dict):
+        result = {k: v for k, v in result.items() if k != "plan"}
+    if item.get("action") == "patch" and isinstance(result, dict):
+        result = {k: v for k, v in result.items() if k in {"error", "code", "reason", "hint"}}
     if item.get("action") == "test" and isinstance(result, dict):
         result = {k: result.get(k) for k in ("status", "reason", "count", "exit_code")}
     return {k: v for k, v in {**item, "result": result}.items() if v is not None}
 
 
-def context(state, decoded):
+def context(state, decoded, *, max_chars=CONTEXT_LIMIT, max_bytes=None):
     mem = memory(state)
     last = state.get("last_test")
     editable = state["spec"]["allowed_files"]
     body = {
         "request": state["spec"]["request"],
+        "plan_recorded": bool(state["plan"]),
         "editable": editable,
         "read_only": [p for p in decoded if p not in editable][:32],
         "file_count": len(decoded),
@@ -154,14 +166,19 @@ def context(state, decoded):
         "last_test": ({"status": last["status"], "count": last.get("count"), "reason": last.get("reason"),
                        "for_current_code": last.get("revision") == state.get("revision"),
                        "failures": test_digest(last.get("output", ""))} if last else None),
-        "file_views": file_views(state, decoded),
+        "file_views": {},
         "warning": mem["warning"],
         "next": next_step(state),
         "remaining_steps": state["spec"]["budget"]["max_steps"] - state["steps"],
     }
-    while len(json.dumps(body, ensure_ascii=False)) > CONTEXT_LIMIT and body["file_views"]:
-        body["file_views"].popitem()
-    if len(json.dumps(body, ensure_ascii=False)) > CONTEXT_LIMIT:
-        body["read_only"] = []
-        body["last_result"] = None
-    return body
+    views = file_views(state, decoded)
+    # The last explicitly read source window takes priority over older files.
+    recent = state["observations"][-1] if state["observations"] else {}
+    result = recent.get("result") or {}
+    name = result.get("path") if isinstance(result, dict) else None
+    if name in views:
+        views = {name: views.pop(name), **views}
+    selected = select(body, views, max_chars=max_chars, max_bytes=max_bytes)
+    # Keep the actionable next step last, rather than repeating a stale plan there.
+    next_action = selected.pop("next")
+    return {**selected, "next": next_action}

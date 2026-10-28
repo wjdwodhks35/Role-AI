@@ -16,7 +16,40 @@ class EditMismatch(ValueError):
 
 
 def unescape(text):
-    return re.sub(r"\\([ntr\"\\])", lambda m: ESCAPES[m.group(1)], text)
+    """Repair structural escapes only; never decode escapes inside Python literals."""
+    # Embedded expressions can have nested quote syntax: do not guess f-string boundaries.
+    if re.search(r"\b(?:f|fr|rf)[\"']", text, flags=re.I):
+        return text
+    result, index, quote = [], 0, None
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if text.startswith(quote, index):
+                result.append(quote)
+                index += len(quote)
+                quote = None
+                continue
+            if char == "\\" and index + 1 < len(text):
+                result.append(text[index:index + 2])
+                index += 2
+                continue
+        elif char in {"'", '"'}:
+            quote = char * 3 if text.startswith(char * 3, index) else char
+            result.append(quote)
+            index += len(quote)
+            continue
+        elif char == "\\" and index + 1 < len(text):
+            following = text[index + 1]
+            if following in {"n", "r", "t"}:
+                result.append(ESCAPES[following])
+                index += 2
+                continue
+            result.append(text[index:index + 2])
+            index += 2
+            continue
+        result.append(char)
+        index += 1
+    return "".join(result)
 
 
 def _strip_newline(text):
@@ -49,9 +82,12 @@ def excerpt(text, needle, limit=900):
     """Closest region of the current file, so the model can copy exact text."""
     lines = text.splitlines()
     probe = next((line.strip() for line in unescape(needle).splitlines() if line.strip()), "")
-    best, score = 0, 0.0
+    best, score, scores = 0, 0.0, {}
     for number, line in enumerate(lines):
-        ratio = difflib.SequenceMatcher(None, probe, line.strip()).ratio() if probe else 0
+        candidate = line.strip()[:400]
+        if candidate not in scores:
+            scores[candidate] = difflib.SequenceMatcher(None, probe[:400], candidate).ratio() if probe else 0
+        ratio = scores[candidate]
         if ratio > score:
             best, score = number, ratio
     start = max(0, best - 3)
@@ -72,6 +108,7 @@ def replace_once(text, old, new):
             })
     raise EditMismatch("not_found", {
         "reason": "not_found",
+        "normalization_attempts": [label for label, _, _ in _candidates(text, old, new)],
         "hint": "old_text was not found. Copy it exactly from the current file (real newlines, same indentation).",
         "closest": excerpt(text, old),
     })

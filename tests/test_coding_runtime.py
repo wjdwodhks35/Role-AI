@@ -32,9 +32,10 @@ def coding(tmp_path):
                         coding_repositories={"fixture": str(repo)}, storage_dir=str(tmp_path / "artifacts"),
                         database_url=f"sqlite:///{tmp_path / 'auth.db'}",
                         coding_image="python:3.12-slim@sha256:" + "a" * 64)
+    # Preserve the explicit-test legacy protocol; new approval defaults have separate coverage.
     body = TaskCreate(repository_id="fixture", project_id="project", request="Fix answer to 42",
                       allowed_files=("calc.py",), approved=True, record_strategy=True,
-                      budget=TaskBudget(token_budget=131072))
+                      budget=TaskBudget(token_budget=131072), model={"automatic_tests": False})
     store = CodingJobStore(settings.coding_root)
     state = store.create("owner", body, git("rev-parse", "HEAD"), checksum(str(repo)),
                          runtime_hash=runtime_identity(settings, "fixture"))

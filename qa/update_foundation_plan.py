@@ -21,6 +21,7 @@ def main():
         ("test_coding_workspace.py", "REQ-CODING-WORKSPACE", "코딩 작업·격리 파일 변경"),
         ("test_strategy_events.py", "REQ-STRATEGY-RECORDER", "최소 전략 경험 기록"),
         ("test_coding_runtime.py", "REQ-CODING-RUNTIME", "코딩 실행·복구·체크포인트"),
+        ("test_coding_evaluation.py", "REQ-CODING-EVAL", "컨텍스트·복구·평가 예산 경계"),
         ("test_coding_stability.py", "REQ-CODING-STABILITY", "코딩 모델 연동·패치 복구·토큰 계측"),
     ]:
         tree = ast.parse((ROOT / "tests" / filename).read_text())

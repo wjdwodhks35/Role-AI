@@ -1,0 +1,23 @@
+{
+  "scope": "Scripted decisions and real local unittest; no inference or model server.",
+  "source_sha256": "b002c4d51bbb7d879fa3536620bc22d0a4e354371e499ff941165337a85d3b8c",
+  "automatic_supported": true,
+  "normal": {
+    "completed": true,
+    "actual_fixture_tests": 1,
+    "model_requests": 3,
+    "tool_steps": 4,
+    "test_runner_executions": 1,
+    "reserved_tokens_not_measured_usage": 15360,
+    "real_model_calls": 0
+  },
+  "duplicate_test_request": {
+    "completed": true,
+    "actual_fixture_tests": 1,
+    "model_requests": 5,
+    "tool_steps": 5,
+    "test_runner_executions": 1,
+    "reserved_tokens_not_measured_usage": 25600,
+    "real_model_calls": 0
+  }
+}

@@ -25,7 +25,8 @@ def task_view(state, *, detail=False):
     usage = state.get("usage") or {}
     result.update(repository_id=state["spec"]["repository_id"], budget=state["spec"]["budget"],
                   model=state["spec"].get("model"), pending=state.get("pending"), progress=None,
-                  usage={k: v for k, v in usage.items() if k != "calls"} or None)
+                  usage={k: v for k, v in usage.items() if k != "calls"} or None,
+                  diagnostic=state.get("diagnostic"), context_usage=state.get("context_usage"))
     if detail:
         result.update(allowed_files=state["spec"]["allowed_files"], command=state["spec"]["command"])
         result.update(request=state["spec"]["request"], plan=state["plan"], history=state["history"],

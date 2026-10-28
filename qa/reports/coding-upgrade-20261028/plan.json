@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "planned_attempts": 104,
+  "repeats": 2,
+  "panels": [
+    "paired",
+    "ablations",
+    "holdout"
+  ],
+  "resource_gate": {
+    "min_free_vram_mib": 6000,
+    "max_gpu_utilization": 15
+  },
+  "runtime_sha256": {
+    "baseline": "4bf0bd292eb3a04daca5bdcbe05803f4961a34dea77ff977f27827204b6058e2",
+    "candidate": "8b0648919edee2028f6364ee3f21d0a6e061479cc346e69a813b8d5bb4f644d4"
+  },
+  "evaluation_sha256": "c6344f0b305143c5cedd3582594f62ba80372841815bfb3c118bac64bdc1e3da",
+  "model_digests": {
+    "qwen3.5:4b": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+    "qwen3:8b": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41"
+  },
+  "server_version": {
+    "version": "0.40.12"
+  },
+  "python": "3.12.3",
+  "design": "paired condition order reversed on second repetition; fixed ablation order; descriptive small samples",
+  "holdout_policy": "No runtime changes after matrix start; holdout run last, no reference patches in model input."
+}

@@ -23,6 +23,10 @@ class CodingJobError(ValueError):
     pass
 
 
+class CheckpointWriteError(OSError):
+    code = "checkpoint_io"
+
+
 class JobBusy(CodingJobError):
     pass
 
@@ -56,6 +60,8 @@ class ModelOptions(Contract):
     # Retention after the task stops; 0 unloads the model to free VRAM for other work.
     post_task_keep_alive_seconds: int = Field(default=0, ge=0, le=3600)
     num_ctx: int = Field(default=4096, ge=2048, le=16384)
+    # New approved tasks test each applied revision without another LLM round trip.
+    automatic_tests: bool = True
 
 
 class TaskCreate(Contract):
@@ -133,6 +139,8 @@ class CodingJobStore:
                     yield
                 finally:
                     fcntl.flock(stream, fcntl.LOCK_UN)
+        except CheckpointWriteError:
+            raise
         except OSError:
             raise CodingJobError("Cannot lock coding task") from None
 
@@ -217,7 +225,10 @@ class CodingJobStore:
         state["history"] = state["history"][-128:]
         state["observations"] = state["observations"][-8:]
         # Bounded task count + bounded checkpoint size; no source/log dump in telemetry.
-        self.atomic(directory / "checkpoint.json", state)
+        try:
+            self.atomic(directory / "checkpoint.json", state)
+        except OSError:
+            raise CheckpointWriteError("Checkpoint write failed; inspect storage before resuming.") from None
 
     def control(self, directory):
         path = directory / "control.json"

@@ -18,6 +18,7 @@ Results and remaining runs: docs/coding-agent-stabilization.md
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -155,9 +156,11 @@ class HostRunner:
             except subprocess.TimeoutExpired:
                 out, code, reason = "timeout", -9, "timeout"
         ran = next((int(line.split()[1]) for line in out.splitlines() if line.startswith("Ran ")), 0)
-        passed = not reason and code == 0 and ran > 0
+        skipped = re.search(r"^OK \(skipped=(\d+)\)", out, flags=re.M)
+        skipped_count = int(skipped.group(1)) if skipped else 0
+        passed = not reason and code == 0 and ran > skipped_count
         return {"status": "passed" if passed else "failed", "reason": reason or "tests", "exit_code": code,
-                "count": ran, "output": out, "command": "unittest", "image": "host-subprocess",
+                "count": ran, "skipped": skipped_count, "output": out, "command": "unittest", "image": "host-subprocess",
                 "container": name, "revision": state["revision"]}
 
     def reconcile(self, pending):
@@ -186,7 +189,7 @@ class OldTimedModel(LocalCodingModel):
             data = r.json()
             self.calls.append({"prompt_tokens": data.get("prompt_eval_count"), "output_tokens": data.get("eval_count"),
                                "load_seconds": data.get("load_duration", 0) / 1e9,
-                               "done_reason": data.get("done_reason"), "raw": data["message"]["content"][:1500]})
+                               "done_reason": data.get("done_reason"), "raw": data["message"]["content"]})
             return data["message"]["content"]
 
 
@@ -198,8 +201,9 @@ class NewTimedModel(LocalCodingModel):
     async def _call(self, state, messages):
         reply = await super()._call(state, messages)
         self.calls.append({k: reply.get(k) for k in ("prompt_tokens", "output_tokens", "load_seconds",
-                                                    "done_reason", "think", "thinking_chars")}
-                          | {"raw": reply["content"][:1500]})
+                                                    "done_reason", "think", "thinking_chars",
+                                                    "prompt_eval_seconds", "generation_seconds")}
+                          | {"raw": reply["content"]})
         return reply
 
 
@@ -296,11 +300,12 @@ def run_one(args, model_name, task_id, root):
     Path(settings.storage_dir).mkdir()
     extra = {}
     if NEW:
-        extra["model"] = {"think": args.think, "keep_alive_seconds": args.keep, "post_task_keep_alive_seconds": 0}
+        extra["model"] = {"think": args.think, "keep_alive_seconds": args.keep, "post_task_keep_alive_seconds": 0,
+                          "num_ctx": getattr(args, "num_ctx", 4096)}
     body = TaskCreate.model_validate_json(json.dumps({
         "repository_id": "bench", "project_id": "bench", "request": task["request"],
         "allowed_files": task["allowed"], "approved": True, "record_strategy": False,
-        "budget": TaskBudget().model_dump(), **extra}))
+        "budget": TaskBudget(output_tokens=getattr(args, "output_tokens", 1024)).model_dump(), **extra}))
     store = CodingJobStore(settings.coding_root)
     state = store.create("owner", body, head, checksum(str(base / "repo")),
                          runtime_hash=runtime_identity(settings, "bench"))
@@ -324,6 +329,9 @@ def run_one(args, model_name, task_id, root):
             "reserved_tokens": final["calls"] * (4096 + final["spec"]["budget"]["output_tokens"]),
             "budget_tokens_charged": final["tokens"], "vram_peak_mib": sampler.peak,
             "phases": [h["phase"] for h in final["history"]], **analyse(final, model.calls, task),
+            "diagnostic": final.get("diagnostic"), "context_usage": final.get("context_usage"),
+            "checkpoint": str(store.directory("owner", state["id"])),
+            "final_state": final, "model_calls": model.calls,
             "usage": final.get("usage") and {k: v for k, v in final["usage"].items() if k != "calls"},
             "final_code": code, "raw": [c["raw"] for c in model.calls]}
 
@@ -335,6 +343,8 @@ def main():
     p.add_argument("--tasks", default=",".join(TASKS))
     p.add_argument("--think", default="off")
     p.add_argument("--keep", type=int, default=300)
+    p.add_argument("--output-tokens", type=int, default=1024)
+    p.add_argument("--num-ctx", type=int, default=4096)
     p.add_argument("--timeout", type=float, default=60)
     p.add_argument("--no-normalize", action="store_true")
     p.add_argument("--image", default="", help="digest-pinned local image for the Docker runner")
@@ -356,6 +366,8 @@ def main():
         for t in args.tasks.split(","):
             try:
                 r = run_one(args, m, t, root)
+                r.pop("final_state", None)
+                r.pop("model_calls", None)
             except Exception as e:
                 r = {"label": args.label, "model": m, "task": t, "status": "harness_error", "error": repr(e)}
             print(json.dumps({k: r.get(k) for k in ("label", "model", "task", "status", "wall_sec", "calls",

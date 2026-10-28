@@ -279,7 +279,7 @@ def test_model_context_is_bounded_and_test_log_is_digested(coding):  # noqa: F81
     body = context(state, decode_files(state["files"]))
     assert len(json.dumps(body)) <= CONTEXT_LIMIT
     assert "noise line" not in body["last_test"]["failures"]
-    assert body["last_test"]["failures"].count("FAIL: test_answer") == 3
+    assert body["last_test"]["failures"].count("FAIL: test_answer") == 1
     assert body["last_test"]["for_current_code"] is False
 
 
