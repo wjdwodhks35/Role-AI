@@ -120,7 +120,7 @@ class LocalCodingModel:
 def runtime_identity(settings, repo_id):
     return checksum({"source": str(repository(settings, repo_id)), "image": settings.coding_image,
                      "socket": settings.code_execution_socket, "model": settings.ollama_model,
-                     "url": settings.ollama_url})
+                     "url": settings.ollama_url, "inference_lock": str(Path(settings.storage_dir).resolve())})
 
 
 class CodingAgent:

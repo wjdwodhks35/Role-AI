@@ -36,6 +36,8 @@ ROLE_AI_CODING_IMAGE=승인된로컬이미지@sha256:<실제64자리digest>
 ```
 
 기존 ROLE_AI_OLLAMA_URL/MODEL, ROLE_AI_STORAGE_DIR, ROLE_AI_CODE_EXECUTION_SOCKET 설정을 사용한다.
+API와 모든 Worker의 ROLE_AI_STORAGE_DIR도 같은 절대 경로를 사용해야 한다. 추론 잠금 경로가
+승인 당시와 다른 Worker는 작업 실행을 거부한다.
 이미지는 로컬에 설치된 Linux 이미지이며 digest가 고정되어야 한다. 자동 pull은 하지 않는다.
 간단한 unittest 저장소는 Python이, pytest 저장소는 pytest와 해당 프로젝트 의존성이 이미지에
 미리 있어야 한다. Role-AI 자체의 전체 테스트에는 test 의존성과 git 등도 필요하다.
