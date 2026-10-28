@@ -7,7 +7,9 @@ import subprocess
 import httpx
 import pytest
 
-from role_ai.coding_agent import CodingAgent, CodingAction, LocalCodingModel, ModelBusy, runtime_identity
+from role_ai.coding_agent import (
+    CodingAgent, CodingAction, LocalCodingModel, ModelBusy, parse_reply, runtime_identity,
+)
 from role_ai.coding_jobs import CodingJobError, CodingJobStore, JobBusy, TaskBudget, TaskCreate, checksum, decode_files
 from role_ai.coding_project import cumulative_diff
 from role_ai.config import Settings
@@ -391,9 +393,12 @@ def test_local_model_requests_action_schema_instead_of_unconstrained_json(coding
         assert schema["additionalProperties"] is False
         assert "test" in schema["properties"]["action"]["enum"]
         assert data["options"]["temperature"] == 0
+        assert "think" not in data  # model without the thinking capability
         return httpx.Response(200, json={"message": {"content": '{"action":"test"}'}})
     monkeypatch.setattr(OllamaProvider, "client", lambda self: httpx.AsyncClient(
         base_url="http://localhost/", transport=httpx.MockTransport(handle), trust_env=False))
     reply = asyncio.run(LocalCodingModel(settings)._call(state, []))
-    assert CodingAction.model_validate_json(reply).action == "test"
+    assert parse_reply(reply)[0].action == "test"
+    # Missing usage metadata is reported as unknown, never as zero.
+    assert reply["prompt_tokens"] is None and reply["output_tokens"] is None
     assert [p for p, _ in calls] == ["/api/show", "/api/chat"]
