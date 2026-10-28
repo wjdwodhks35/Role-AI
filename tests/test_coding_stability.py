@@ -13,7 +13,7 @@ from role_ai.coding_agent import CodingAction, CodingAgent, LocalCodingModel, pa
 from role_ai.coding_edits import EditMismatch, apply_changes, replace_once
 from role_ai.coding_jobs import TaskBudget, TaskCreate, checksum, decode_files
 from role_ai.coding_memory import CONTEXT_LIMIT, context
-from tests.test_coding_runtime import FixtureRunner, ScriptModel, coding  # noqa: F401
+from test_coding_runtime import FixtureRunner, ScriptModel, coding  # noqa: F401
 
 
 def run(coding, actions, **options):  # noqa: F811
