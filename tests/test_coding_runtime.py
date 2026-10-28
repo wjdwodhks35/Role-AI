@@ -359,3 +359,17 @@ def test_gpu_lock_serializes_calls_and_unknown_timeout_blocks_next_inference(cod
         model.complete(state, [])
     with pytest.raises(GpuBudgetError):
         preflight(settings, "inference")
+
+
+def test_exact_replacement_and_bounded_valid_model_context(coding):
+    result, model, _ = run(coding, [{"action": "plan", "plan": ["Inspect and fix"]},
+        {"action": "read", "path": "calc.py", "offset": 0},
+        {"action": "patch", "changes": [{"path": "calc.py", "old_text": "answer = 0", "new_text": "answer = 42"}]},
+        {"action": "test"}, {"action": "finish"}])
+    assert result["status"] == "completed"
+    assert decode_files(result["files"])["calc.py"] == b"answer = 42\n"
+    for messages in model.prompts:
+        json.loads(messages[1]["content"])
+    for changes in ([{"path": "calc.py"}], [{"path": "calc.py", "old_text": "x", "new_text": "y", "content": "z"}]):
+        with pytest.raises(ValueError):
+            CodingAction.model_validate_json(json.dumps({"action": "patch", "changes": changes}))

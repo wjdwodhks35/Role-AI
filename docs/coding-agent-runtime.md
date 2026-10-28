@@ -11,6 +11,8 @@
 - 로컬 Ollama가 JSON action 하나씩 계획/list/read/search/patch/test/finish를 선택한다.
   잘못된 JSON, 허용하지 않은 action·파일, 테스트 미실행 상태의 finish는 성공 처리하지 않는다.
 - 모델 출력은 명령 승인이 아니다. 등록된 저장소, 요청 시 승인한 파일/명령/예산을 서버가 검사한다.
+- 긴 소스는 offset으로 나누어 읽고, 전체 파일 대신 정확히 한 번 나타나는 old_text/new_text를
+  교체할 수 있다. 일치하지 않거나 모호한 교체를 임의로 적용하지 않는다.
 - 각 patch는 pinned base commit에서 별도 worktree를 구성하고 이전 checkpoint 코드를 복원하여
   적용한다. 원본 dirty/untracked 파일을 보존한다. 바이너리는 수정하지 않고 snapshot에 보존하며
   모델에 보내지 않는다. 수정 가능한 파일은 제한된 텍스트 확장자이며 기존 테스트는 읽기 전용이다.
