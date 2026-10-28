@@ -65,7 +65,7 @@ def private_directory(path):
     return path
 
 
-def read_text(path):
+def read_text(path, *, binary=False):
     """Read no symlink/special file and bound reads even after file replacement."""
     if not path.exists() and not path.is_symlink():
         return None
@@ -75,17 +75,19 @@ def read_text(path):
             info = os.fstat(stream.fileno())
             if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
                 raise CodingBoundaryError("일반 단일 링크 파일만 사용할 수 있습니다.")
-            raw = stream.read(MAX_FILE_BYTES + 1)
-        if len(raw) > MAX_FILE_BYTES or b"\0" in raw:
+            limit = MAX_FILE_BYTES * 4 if binary else MAX_FILE_BYTES
+            raw = stream.read(limit + 1)
+        if len(raw) > limit or (not binary and b"\0" in raw):
             raise CodingBoundaryError("텍스트 파일 크기 또는 형식 제한을 초과했습니다.")
-        raw.decode("utf-8")
+        if not binary:
+            raw.decode("utf-8")
         return raw
     except (OSError, UnicodeError):
         raise CodingBoundaryError("작업 파일을 안전하게 읽을 수 없습니다.") from None
 
 
 class CodingWorkspace:
-    def __init__(self, repository, root, spec: CodingTaskSpec):
+    def __init__(self, repository, root, spec: CodingTaskSpec, *, binary_passthrough=False):
         if os.name != "posix":
             raise CodingBoundaryError("Linux/WSL의 사유 작업공간만 지원합니다.")
         # repository comes from an operator-controlled allowlist, never a model path.
@@ -97,6 +99,7 @@ class CodingWorkspace:
             raise CodingBoundaryError("저장소와 작업 루트는 분리되어야 합니다.")
         self.root = private_directory(self.root)
         self.spec = spec
+        self.binary_passthrough = binary_passthrough
         self.path = self.root / spec.task_id
         self.status = "planned"
         self.started = time.monotonic()
@@ -150,12 +153,14 @@ class CodingWorkspace:
                     raise CodingBoundaryError("링크·서브모듈·특수 파일 저장소는 지원하지 않습니다.")
                 size = int(raw_size)
                 total += size
-                if size > MAX_FILE_BYTES or total > MAX_REPOSITORY_BYTES:
+                file_limit = MAX_FILE_BYTES * 4 if self.binary_passthrough else MAX_FILE_BYTES
+                if size > file_limit or total > MAX_REPOSITORY_BYTES:
                     raise CodingBoundaryError("소형 저장소 용량 제한을 초과했습니다.")
                 raw = git(self.repository, "cat-file", "blob", oid.decode("ascii"))
-                if b"\0" in raw:
+                if not self.binary_passthrough and b"\0" in raw:
                     raise CodingBoundaryError("텍스트 저장소만 지원합니다.")
-                raw.decode("utf-8")
+                if not self.binary_passthrough:
+                    raw.decode("utf-8")
                 self.baseline[path] = raw
                 self.modes[path] = mode.decode("ascii")
             except (ValueError, UnicodeError):
@@ -214,7 +219,7 @@ class CodingWorkspace:
                 names.add(relative)
         for name in names:
             self.check_deadline()
-            raw = read_text(self.target(name))
+            raw = read_text(self.target(name), binary=self.binary_passthrough)
             if raw != self.baseline.get(name):
                 raise CodingBoundaryError("작업공간이 예상 상태와 다릅니다.")
 

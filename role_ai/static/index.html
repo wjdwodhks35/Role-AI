@@ -6,6 +6,7 @@
   <title>Role-AI · 나의 AI 작업 공간</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
+  <script src="/static/coding.js" defer></script>
 </head>
 <body>
   <div id="notice" role="status" aria-live="polite" hidden></div>
@@ -57,6 +58,7 @@
         <label>전문 Skill<select id="skill"></select></label>
         <button id="probe">연결 테스트</button>
         <button id="code-open" hidden>코드 테스트 실행</button>
+        <button id="coding-open" hidden>Coding Agent</button>
         <button id="gpu-open" hidden>GPU 메모리 설정</button>
         <button id="documents-open">문서 관리</button>
         <button id="memory-open">기억 관리</button>
@@ -322,6 +324,33 @@ class AddTests(unittest.TestCase):
       <div id="unified-jobs"></div>
     </details>
     <h3>학습 작업</h3><div id="training-jobs"></div>
+  </dialog>
+  <dialog id="coding-dialog">
+    <button id="coding-close" type="button">닫기</button><h2>Coding Agent · 격리 개발 작업</h2>
+    <p>등록된 저장소의 승인 파일만 수정합니다. 명령은 격리 실행하며 운영 배포는 하지 않습니다.</p>
+    <form id="coding-form" class="management-form">
+      <label>저장소<select id="coding-repository" required></select></label>
+      <label>프로젝트 ID<input id="coding-project" value="coding" pattern="[A-Za-z0-9_-]{1,64}" required></label>
+      <label>작업 요청<textarea id="coding-request" maxlength="4000" required></textarea></label>
+      <label>수정 허용 파일 · 한 줄에 하나<textarea id="coding-files" required placeholder="src/example.py"></textarea></label>
+      <label>테스트 명령<select id="coding-command"><option value="unittest">unittest</option><option value="pytest">pytest</option></select></label>
+      <label>최대 단계<input id="coding-steps" type="number" min="2" max="128" value="24" required></label>
+      <label>최대 재수정<input id="coding-retries" type="number" min="0" max="10" value="3" required></label>
+      <label>같은 오류 중단 횟수<input id="coding-errors" type="number" min="1" max="5" value="2" required></label>
+      <label>누적 실행 시간(초)<input id="coding-seconds" type="number" min="10" max="14400" value="1800" required></label>
+      <label>명령당 제한(초)<input id="coding-timeout" type="number" min="1" max="300" value="30" required></label>
+      <label>최대 모델 호출<input id="coding-calls" type="number" min="1" max="128" value="24" required></label>
+      <label>입출력 토큰 예산<input id="coding-tokens" type="number" min="4096" max="524288" value="65536" required></label>
+      <label>명령 메모리(MiB)<input id="coding-memory" type="number" min="128" max="2048" value="256" required></label>
+      <label><input id="coding-consent" type="checkbox" required>허용 파일·테스트 명령·예산 및 로컬 모델 전송을 승인합니다.</label>
+      <label><input id="coding-record" type="checkbox">원문 없이 최소 전략 메타데이터를 기록합니다.</label>
+      <button type="submit">작업 등록</button>
+    </form>
+    <button id="coding-refresh" type="button">작업 새로고침</button>
+    <p>중단 요청은 실행 중인 제한된 단계가 끝난 뒤 반영됩니다. 테스트 통과가 작업 정확성을 보장하지는 않습니다.</p>
+    <div id="coding-tasks"></div>
+    <label><input id="coding-unknown" type="checkbox">이전 실행 종료를 직접 확인했으며 불명확한 결과를 인지하고 재개합니다.</label>
+    <pre id="coding-result"></pre>
   </dialog>
 </body>
 </html>
