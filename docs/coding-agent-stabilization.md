@@ -1,7 +1,7 @@
 # Coding Agent 안정화 · 진행 상황
 
 > 이 문서는 작업 진행 중 계속 갱신한다. 중단 시점의 상태를 그대로 남긴다.
-> 마지막 갱신: 2026-10-28 · **사용자 요청으로 벤치마크 13번째 실행에서 중단** · 코드·테스트·커밋 완료, PR·병합 전
+> 마지막 갱신: 2026-10-28 · **사용자 요청으로 벤치마크 13번째 실행에서 중단** · dev 병합 후 다른 장비에서 남은 벤치마크 진행
 
 ## 1. 진행 상태
 
@@ -14,15 +14,16 @@
 | 5. 자동 테스트 | 완료 | 전체 555 passed (기존 69 coding 포함, 신규 31), ruff 통과. 중단 직전 수정 후 coding 관련 100 passed |
 | 6. 실모델 검증 | **부분 완료(중단)** | 변경 전 10회 완료, 변경 후 3회(qwen3.5:4b T1~T3)만 완료. qwen3:8b 변경 후 미실행 |
 | 7. 성능 비교 | **부분 완료(중단)** | S0 변경 전 완료 / S1 변경 후 3/10 / S2 think on·S3 keep_alive 0·S4 패치 정규화 off 미실행 |
-| 커밋 | 완료 | 7299181, c2ffca1, 33b0bd5, 9f58cf9 + 중단 시점 커밋(읽기 안내 수정, 문서). 브랜치 feature/coding-agent-live-verification, **원격 push 안 함** |
-| PR·dev 병합 | 진행 전 | 중단 요청으로 보류. 재개 시: push → dev 대상 PR(문제점은 PR 본문에 기록) → 병합 |
+| 커밋 | 완료 | 7299181, c2ffca1, 33b0bd5, 9f58cf9 + 중단 시점 커밋(읽기 안내 수정, 문서). 브랜치 feature/coding-agent-live-verification |
+| PR·dev 병합 | 완료 | 사용자 지시로 중단 시점 상태를 dev에 병합. 남은 벤치마크는 다른 장비에서 진행 |
 
 ### 벤치마크 조건 (모든 조건 동일)
 - GPU: RTX 4060 Laptop 8GB, Ollama 0.40.8, temperature 0, 과제당 1회 실행
 - 예산: `TaskBudget` 기본값(단계·호출 24, 토큰 65,536, 출력 1,024/호출, 재시도 3, 동일 오류 2)
 - 모델 호출 타임아웃: 기본 60초
 - 테스트 러너: Docker 대신 호스트 `python -I -m unittest`(임시 디렉터리, 20초 제한). **Docker 격리 경로는 미검증**
-- 하네스는 저장소에 넣지 않음(호스트 실행 러너가 운영 정책과 다르므로). 위치: 개발 PC 임시 디렉터리 `bench/bench2.py`
+- 하네스: `qa/bench_coding_models.py`(기본 Docker 러너, `--host-runner`는 명시적 선택), 집계: `qa/bench_coding_report.py`
+- 원시 결과: `qa/reports/coding-bench/`(S0_before 10회, S1_after 3회, S1_v1_superseded는 수정 전 코드라 제외). 이번 13회는 모두 `--host-runner` 조건
 - 과제: T1 덧셈 버그, T2 slugify, T3 median/mode, **T4 단어 빈도(신규), T5 CRLF 파일 클래스 버그(신규)**
 
 ### 미리 확인한 실측 (스모크)
@@ -103,11 +104,14 @@ qwen3:8b 변경 후 결과, thinking on/off 비교, keep_alive 0 비교, 패치 
 
 ## 5. 남은 작업 (재개 순서)
 1. [ ] 남은 벤치마크 37회: S1 나머지(qwen3.5:4b T4·T5, qwen3:8b T1~T5), S2 think on, S3 keep_alive 0, S4 패치 정규화 off
-   - 재현: 임시 디렉터리 `bench/`에서 `PYTHONPATH=<worktree> python bench2.py --label S1_after --out S1.jsonl` 등
-   - S0(변경 전) 결과는 `S0.jsonl`에 보관되어 다시 돌릴 필요 없음
+   - 다른 장비에서 재개: `ollama pull qwen3.5:4b qwen3:8b`(해당 장비 승인 후), Docker 이미지 digest 준비
+   - `PYTHONPATH=. python qa/bench_coding_models.py --label S1_after --image <digest 고정 이미지> --out qa/reports/coding-bench/S1_after_<장비>.jsonl`
+     (`--models`, `--tasks`로 남은 조합만 선택. S2는 `--think on`, S3는 `--keep 0`, S4는 `--no-normalize`)
+   - 변경 전 기준선(S0)은 저장된 결과를 재사용. 다른 GPU에서 비교하려면 `git archive 955ef4f role_ai`로 만든 스냅숏을 PYTHONPATH로 지정해 다시 측정
+   - 장비가 다르면 시간·VRAM 수치는 직접 비교하지 말고 같은 장비 안에서만 비교
 2. [ ] T3 출력 한도 문제 대응 후 S1 재측정(코드 변경 시 S1부터 다시)
 3. [ ] 이 문서 4절 최종 표 갱신
-4. [ ] `git push` → dev 대상 PR(문제점·미검증 항목을 PR 본문에 기록) → dev 병합(사용자 지시)
+4. [x] dev 대상 PR·병합(사용자 지시: 다른 장비에서 테스트 계속). 문제점·미검증 항목은 PR 본문에 기록
 5. [ ] 미해결: 테스트 러너가 Docker 전용인데 이 WSL에 Docker가 없어 벤치마크는 호스트 subprocess 러너로 대체(Docker 격리 경로 미검증)
 6. [ ] 이 브랜치의 기존 미커밋 파일(`.github/workflows/ci.yml` 수정, `qa/check_live_coding_patch.py`)은 작업 범위 밖이라 그대로 둠.
    스크립트가 없는 fixture(`qa/fixtures/coding_agent_live_patch.json`)를 읽으므로 그대로 커밋하면 CI가 실패한다.
