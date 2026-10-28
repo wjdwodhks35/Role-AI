@@ -8,6 +8,7 @@ import os
 import time
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import Field, field_validator
@@ -40,6 +41,21 @@ class TaskBudget(Contract):
     patch_bytes: int = Field(default=65536, ge=1, le=262144)
     memory_mib: int = Field(default=256, ge=128, le=2048)
     cpu_millicores: int = Field(default=500, ge=100, le=2000)
+    # Recoverable tool errors (patch mismatch, early finish, missing read). Scope violations stay fatal.
+    tool_error_limit: int = Field(default=4, ge=0, le=16)
+
+
+class ModelOptions(Contract):
+    """Per-task local model settings, fixed at approval time like the budget."""
+    # off: short JSON tool actions; on: allow reasoning (counts against output_tokens);
+    # model_default: send nothing. Only applied when Ollama reports the "thinking" capability.
+    think: Literal["off", "on", "model_default"] = "off"
+    # Reuse the loaded model between calls of one task. Forced to 0 while the GPU admission
+    # policy is enabled, because admission does not credit already-resident models.
+    keep_alive_seconds: int = Field(default=300, ge=0, le=3600)
+    # Retention after the task stops; 0 unloads the model to free VRAM for other work.
+    post_task_keep_alive_seconds: int = Field(default=0, ge=0, le=3600)
+    num_ctx: int = Field(default=4096, ge=2048, le=16384)
 
 
 class TaskCreate(Contract):
@@ -49,6 +65,7 @@ class TaskCreate(Contract):
     allowed_files: tuple[str, ...] = Field(min_length=1, max_length=16)
     command: str = Field(default="unittest", pattern=r"^(unittest|pytest)$")
     budget: TaskBudget = Field(default_factory=TaskBudget)
+    model: ModelOptions = Field(default_factory=ModelOptions)
     approved: bool = False
     record_strategy: bool = False
 
@@ -179,6 +196,7 @@ class CodingJobStore:
                 "plan": [], "observations": [], "history": [], "pending": None,
                 "original": None, "files": None, "revision": None, "tested_revision": None,
                 "last_test": None, "recorder_gap": False, "event_sequence": 0,
+                "memory": None, "usage": None,
             }
             self.save(directory, state)
             return state
