@@ -1,5 +1,10 @@
 # Role-AI
 
+Role-AI 1.0의 [단계별 개발 계획](docs/plans/ROLE_AI_1_0_PR_PLAN.md)과
+[기능 현황](docs/plans/ROLE_AI_1_0_GAP_ANALYSIS.md)을 참고하세요.
+Coding 작업 계약·격리 worktree 파일 변경은 내부 기반이며, 채팅에서 자동 수정·테스트·복구를
+실행하는 Coding Agent는 아직 활성화되지 않았습니다.
+
 지속 학습 Phase 0/1 기반과 GitHub 개발·병합 절차는
 [구현·검증 계획](docs/architecture/CONTINUAL_LEARNING_FOUNDATION.md)을 참고하세요.
 `GET /api/agents`는 로컬 소유자에게 여섯 역할의 정의만 제공합니다.

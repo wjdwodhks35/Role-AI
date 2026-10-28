@@ -18,6 +18,7 @@ def main():
     for filename, requirement, category in [
         ("test_agent_registry.py", "REQ-AGENT-CONFIG", "역할 구성·권한 경계"),
         ("test_baseline_manifest.py", "REQ-BASELINE", "읽기 전용 기준선"),
+        ("test_coding_workspace.py", "REQ-CODING-WORKSPACE", "코딩 작업·격리 파일 변경"),
     ]:
         tree = ast.parse((ROOT / "tests" / filename).read_text())
         for node in tree.body:
@@ -66,6 +67,10 @@ def main():
             "여섯 역할 정의/설정 검증/권한 확대 차단/로컬 소유자 조회/기존 대화 유지",
         ),
         ("REQ-BASELINE", "소스·설정 해시/Git 식별/원문·비밀 제외/기존 보고서 덮어쓰기 방지"),
+        (
+            "REQ-CODING-WORKSPACE",
+            "작업·변경 승인 해시/격리 worktree/원본 보존/경로·수정량 제한/실행 금지/diff",
+        ),
     ]:
         if name not in names:
             coverage.append([name, scope, "자동 검증; 실제 모델·학습·운영 반영 없음"])
