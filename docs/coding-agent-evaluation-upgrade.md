@@ -32,7 +32,7 @@
 - 코딩 관련 이전 단계 80개 통과 후 추가 원인 보존·cache 무효화 검사까지 전체 QA에서 통과했다.
 - Ruff 및 `git diff --check` 통과. 기존 테스트 삭제/보안 약화 없음.
 - 자동 테스트 검증은 모의 의사결정 + 임시 합성 저장소의 실제 `unittest` 실행이다. LLM/Ollama 서버는 호출하지 않았다.
-- 실제 Docker 경로는 소켓 권한 제약으로 미검증이다. production의 Docker 전용 실행 정책은 그대로 유지한다.
+- 로컬 Docker 소켓 권한 때문에 직접 실기는 하지 못했다. 이후 [GitHub Actions 실행 40694065764](https://github.com/wjdwodhks35/Role-AI/actions/runs/40694065764)의 code-execution job에서 `qa/check_coding_runtime.py`가 통과해 모의 모델+실제 Docker 실행 경로를 확인했다. 실모델+Docker 조합은 미측정이며 production의 Docker 전용 정책은 그대로 유지한다.
 
 ## 4. 모델별·조건별 성공률 — 수정 전 V1의 중단 실험
 
@@ -91,7 +91,7 @@ V1의 실모델 성공률은 낮아졌고, 같은 성공 과제의 시간도 악
 
 ## 8. 남은 문제
 
-최종 모델별 성공률, Docker 실기, 모델별 정확한 사전 토큰화, 충분한 독립 평가 표본, 일부 복잡한 패치/모델 반복 행동은 미확인이다. 오래된 상세 관찰은 기존 private 체크포인트 보관 범위의 제약이 있다. raw 예외/운영 비밀은 공개 로그에 넣지 않고 코드/단계/예외 타입으로 구분한다. keep_alive 기본값은 300초이며 GPU admission 정책 강제 0과 작업 종료 후 해제 정책은 유지했다.
+최종 모델별 성공률, 실모델+Docker 통합, 모델별 정확한 사전 토큰화, 충분한 독립 평가 표본, 일부 복잡한 패치/모델 반복 행동은 미확인이다. 오래된 상세 관찰은 기존 private 체크포인트 보관 범위의 제약이 있다. raw 예외/운영 비밀은 공개 로그에 넣지 않고 코드/단계/예외 타입으로 구분한다. keep_alive 기본값은 300초이며 GPU admission 정책 강제 0과 작업 종료 후 해제 정책은 유지했다.
 
 ## 9. 다음 검증 추천 / 재현
 
@@ -109,4 +109,4 @@ PYTHONPATH=. .venv/bin/python qa/bench_coding_cpu.py --out qa/results/cpu.json
 
 ## 10. 커밋 및 PR 상태
 
-별도 `feature/coding-evaluation-upgrade` 브랜치에서 검증했다. 병합·운영 배포는 수행하지 않는다. 최종 커밋/리뷰 상태는 작업 완료 메시지에 기록한다.
+별도 `feature/coding-evaluation-upgrade` 브랜치에서 검증하고 [Draft PR #31](https://github.com/wjdwodhks35/Role-AI/pull/31)을 dev 대상으로 생성했다. 코드 커밋은 `cee4813e638a262084ed40c43581e8c2d79fc10b`이며 선행 PR #30을 기반으로 한다. Git CLI 인증 부재로 연결된 GitHub 도구를 사용했고, 원격 tree가 로컬 검증 tree와 일치함을 확인했다. 병합·운영 배포는 수행하지 않았다.
