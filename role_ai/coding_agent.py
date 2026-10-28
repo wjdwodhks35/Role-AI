@@ -384,8 +384,9 @@ class CodingAgent:
             except UnicodeError:
                 raise CodingJobError("Binary files are preserved but not sent to the model") from None
             if action.offset == 0 and mem["seen"].get(name) == state["revision"] and len(text) <= 4000:
-                return {"path": name, "notice": "Already read and unchanged; it is in file_views.",
-                        "in_file_views": True}
+                return {"path": name, "in_file_views": True,
+                        "notice": "Already read and unchanged; its current text is in file_views. "
+                                  "Do not read it again. Next: " + next_step(state)}
             mem["seen"][name] = state["revision"]
             remember(mem["done"], f"read {name}", 12)
             return {"path": name, "text": text[action.offset:action.offset + 5000], "offset": action.offset,

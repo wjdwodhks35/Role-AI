@@ -237,6 +237,7 @@ def test_memory_prevents_reread_and_stops_identical_loops(coding):  # noqa: F811
     result, model = run(coding, [PLAN, read, read, read, read])
     assert result["status"] == "budget_exhausted" and len(model.prompts) == 4
     ctx = last_context(model)
+    assert ctx["last_result"]["result"]["notice"].endswith(ctx["next"])
     assert ctx["file_views"]["calc.py"]["text"] == "answer = 0\n"
     assert "read calc.py" in ctx["progress"] and ctx["warning"]
     assert ctx["next"].startswith(("read test_calc.py", "patch"))
