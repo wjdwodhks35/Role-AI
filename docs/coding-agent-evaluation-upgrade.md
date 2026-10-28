@@ -28,9 +28,10 @@
 
 ## 3. 테스트 및 회귀 검사 결과
 
-- 최종 Excel QA: **323개 시나리오, 582회 모두 통과**, 계획 순서 일치, 144.92초.
+- 최종 Excel QA: **323개 시나리오, 582회 모두 통과**, 계획 순서 일치. 로컬 144.92초, CI와 동일한 새 editable 설치 및 `PYTHONPATH` 없는 실행에서 140.85초.
 - 코딩 관련 이전 단계 80개 통과 후 추가 원인 보존·cache 무효화 검사까지 전체 QA에서 통과했다.
 - Ruff 및 `git diff --check` 통과. 기존 테스트 삭제/보안 약화 없음.
+- 첫 원격 CI에서 테스트 4개가 배포 패키지에 포함되지 않는 qa namespace를 import해 실패했다. QA 파일을 명시적 경로로 로드하도록 고쳐 애플리케이션 wheel에 QA 도구를 넣지 않고 해결했고, 위의 격리 설치 명령으로 전체 재검증했다.
 - 자동 테스트 검증은 모의 의사결정 + 임시 합성 저장소의 실제 `unittest` 실행이다. LLM/Ollama 서버는 호출하지 않았다.
 - 로컬 Docker 소켓 권한 때문에 직접 실기는 하지 못했다. 이후 [GitHub Actions 실행 40694065764](https://github.com/wjdwodhks35/Role-AI/actions/runs/40694065764)의 code-execution job에서 `qa/check_coding_runtime.py`가 통과해 모의 모델+실제 Docker 실행 경로를 확인했다. 실모델+Docker 조합은 미측정이며 production의 Docker 전용 정책은 그대로 유지한다.
 

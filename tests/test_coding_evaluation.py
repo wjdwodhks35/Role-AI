@@ -2,6 +2,8 @@
 
 import copy
 import json
+import importlib.util
+from pathlib import Path
 
 import httpx
 import pytest
@@ -12,6 +14,15 @@ from role_ai.coding_edits import EditMismatch, replace_once
 from role_ai.coding_jobs import CheckpointWriteError, decode_files
 from role_ai.coding_memory import context, note_action
 from test_coding_runtime import FixtureRunner, ScriptModel, coding  # noqa: F401
+
+
+def qa_module(name):
+    """QA is source tooling, deliberately excluded from the application wheel."""
+    path = Path(__file__).resolve().parents[1] / "qa" / (name + ".py")
+    spec = importlib.util.spec_from_file_location("evaluation_" + name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 PLAN = {"action": "plan", "plan": ["Fix, test"]}
@@ -189,7 +200,7 @@ def test_reply_reports_duration_and_thinking_characters_without_invented_token_c
 
 
 def test_benchmark_metrics_separate_success_latency_and_unknown_tokens():
-    from qa.coding_eval_metrics import summarize
+    summarize = qa_module("coding_eval_metrics").summarize
 
     rows = [
         dict(kind="attempt", success=True, wall_sec=20, actual_tokens=100, unreturned_calls=0),
@@ -210,7 +221,7 @@ def test_benchmark_metrics_separate_success_latency_and_unknown_tokens():
 
 
 def test_grader_rejects_self_report_without_current_revision_or_protected_files():
-    from qa.coding_eval_metrics import valid_outcome
+    valid_outcome = qa_module("coding_eval_metrics").valid_outcome
 
     final = {"status": "completed", "revision": "a", "tested_revision": "a"}
     grade = {"status": "passed", "count": 3, "revision": "a"}
@@ -222,7 +233,7 @@ def test_grader_rejects_self_report_without_current_revision_or_protected_files(
 
 
 def test_host_evaluation_rejects_all_skipped_tests(tmp_path):
-    from qa.bench_coding_models import HostRunner
+    HostRunner = qa_module("bench_coding_models").HostRunner
     from role_ai.coding_jobs import encode_files
 
     source = "import unittest\n@unittest.skip('not executed')\nclass Skipped(unittest.TestCase):\n def test_one(self): pass\n"
@@ -278,7 +289,7 @@ def _automatic(fixture, *, enabled=True, calls=24, steps=24):
 
 
 def test_automatic_tests_complete_with_three_calls_and_real_unittest_evidence(coding):  # noqa: F811
-    from qa.bench_coding_models import HostRunner
+    HostRunner = qa_module("bench_coding_models").HostRunner
 
     settings, store, state = _automatic(coding, calls=3)
 

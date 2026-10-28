@@ -9,7 +9,7 @@ from pathlib import Path
 from role_ai.coding_agent import CodingAgent, runtime_identity
 from role_ai.coding_jobs import CodingJobStore, TaskBudget, TaskCreate, checksum
 from role_ai.config import Settings
-from qa.bench_coding_models import HostRunner, git_repo
+from bench_coding_models import HostRunner, git_repo
 
 
 def measure(root, actions, automatic):
