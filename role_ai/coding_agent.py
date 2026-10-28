@@ -101,8 +101,10 @@ class LocalCodingModel:
             if info.get("remote_host") or info.get("remote_model") or "completion" not in info.get("capabilities", []):
                 raise CodingJobError("Installed local completion model required; no download or fallback")
             async with client.stream("POST", "api/chat", json={
-                "model": self.settings.ollama_model, "messages": messages, "format": "json", "stream": False,
-                "keep_alive": 0, "options": {"num_ctx": 4096, "num_predict": state["spec"]["budget"]["output_tokens"]},
+                "model": self.settings.ollama_model, "messages": messages,
+                "format": CodingAction.model_json_schema(), "stream": False,
+                "keep_alive": 0, "options": {"num_ctx": 4096, "temperature": 0,
+                    "num_predict": state["spec"]["budget"]["output_tokens"]},
             }) as response:
                 response.raise_for_status()
                 payload = bytearray()

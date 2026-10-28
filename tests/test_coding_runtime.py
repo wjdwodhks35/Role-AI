@@ -374,3 +374,26 @@ def test_exact_replacement_and_bounded_valid_model_context(coding):
     for changes in ([{"path": "calc.py"}], [{"path": "calc.py", "old_text": "x", "new_text": "y", "content": "z"}]):
         with pytest.raises(ValueError):
             CodingAction.model_validate_json(json.dumps({"action": "patch", "changes": changes}))
+
+
+def test_local_model_requests_action_schema_instead_of_unconstrained_json(coding, monkeypatch):
+    import asyncio
+    from role_ai.providers import OllamaProvider
+    settings, _, state, *_ = coding
+    calls = []
+    def handle(request):
+        data = json.loads(request.content)
+        calls.append((request.url.path, data))
+        if request.url.path == "/api/show":
+            return httpx.Response(200, json={"capabilities": ["completion"]})
+        schema = data["format"]
+        assert schema == CodingAction.model_json_schema()
+        assert schema["additionalProperties"] is False
+        assert "test" in schema["properties"]["action"]["enum"]
+        assert data["options"]["temperature"] == 0
+        return httpx.Response(200, json={"message": {"content": '{"action":"test"}'}})
+    monkeypatch.setattr(OllamaProvider, "client", lambda self: httpx.AsyncClient(
+        base_url="http://localhost/", transport=httpx.MockTransport(handle), trust_env=False))
+    reply = asyncio.run(LocalCodingModel(settings)._call(state, []))
+    assert CodingAction.model_validate_json(reply).action == "test"
+    assert [p for p, _ in calls] == ["/api/show", "/api/chat"]
