@@ -92,6 +92,8 @@ def admission(policy, snapshot, kind):
 
 
 def preflight(settings, kind):
+    if kind in {"inference", "embedding"} and (Path(settings.storage_dir) / ".inference-uncertain").exists():
+        raise GpuBudgetError("로컬 모델의 이전 실행 종료가 불명확합니다. 서버 상태와 추론 보호 파일을 확인하세요.")
     policy = read_policy(settings)
     if not policy.enabled:
         return {"enabled": False}

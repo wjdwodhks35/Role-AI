@@ -18,6 +18,7 @@ from role_ai.billing import BillingLedger
 from role_ai.body_limit import BodyLimitMiddleware
 from role_ai.collection import collection_router
 from role_ai.code_execution import execution_router
+from role_ai.coding_api import coding_router
 from role_ai.config import Settings
 from role_ai.database import build_database
 from role_ai.migrations import initialize_database
@@ -143,6 +144,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     app.include_router(evaluation_router(authenticated, repository, settings, providers))
     app.include_router(workers_router(authenticated, repository, settings))
     app.include_router(execution_router(authenticated, settings))
+    app.include_router(coding_router(authenticated, settings))
     app.include_router(policy_router(authenticated, repository, settings, providers, factory))
     app.include_router(collection_router(authenticated, repository, settings))
     app.include_router(documents_router(authenticated, repository, semantic))
@@ -237,6 +239,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         return {
             "resource_settings_available": actor[0].is_owner and settings.mode == "local",
             "code_execution_available": actor[0].is_owner and settings.mode == "local" and settings.code_execution_enabled,
+            "coding_agent_available": actor[0].is_owner and settings.mode == "local" and settings.coding_enabled,
             "request_analysis_available": actor[0].is_owner and settings.mode == "local",
             "requirements_evaluation_available": actor[0].is_owner and settings.mode == "local",
             "worker_management_available": actor[0].is_owner and settings.mode == "local",

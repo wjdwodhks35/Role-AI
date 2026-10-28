@@ -1,9 +1,14 @@
 # Role-AI
 
+최신 제품 기준은 [v1.1 통합 기획서](docs/ROLE_AI_1_0_CODEX_IMPLEMENTATION_PLAN_v1_1.md)입니다.
+[v1.0 원본](docs/ROLE_AI_1_0_CODEX_IMPLEMENTATION_PLAN.md)은 이력으로 보존합니다.
+현재 개발 범위는 **Coding Agent 실동작 완성**이며, 다른 신규 제품 기능은 보류합니다.
+
 Role-AI 1.0의 [단계별 개발 계획](docs/plans/ROLE_AI_1_0_PR_PLAN.md)과
 [기능 현황](docs/plans/ROLE_AI_1_0_GAP_ANALYSIS.md)을 참고하세요.
-Coding 작업 계약·격리 worktree 파일 변경은 내부 기반이며, 채팅에서 자동 수정·테스트·복구를
-실행하는 Coding Agent는 아직 활성화되지 않았습니다.
+[Coding Agent 개발 runtime](docs/coding-agent-runtime.md)은 별도 Worker에서 탐색·계획·수정·
+격리 테스트·오류 복구·체크포인트·중단/재개를 수행합니다. 기본 비활성화이며 기존 대화
+Gateway 권한이나 운영 배포를 활성화하지 않습니다. 실모델 품질·GPU·브라우저 검증은 별도입니다.
 
 지속 학습 Phase 0/1 기반과 GitHub 개발·병합 절차는
 [구현·검증 계획](docs/architecture/CONTINUAL_LEARNING_FOUNDATION.md)을 참고하세요.

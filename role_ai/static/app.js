@@ -60,6 +60,7 @@ async function readApiResponse(path, response) {
 }
 
 function showAuth() {
+  window.dispatchEvent(new Event("roleai-logout"));
   csrf = ""; activeConversation = null; resetRequestPreview();
   $("rlaif-consent").checked = false; $("rlaif-preview-consent").checked = false;
   $("rlaif-judge-result").textContent = "";
@@ -201,6 +202,7 @@ async function enterWorkspace(data) {
     || status.providers.find((p) => p.usable);
   $("provider").value = usable?.id || "";
   $("code-open").hidden = !status.code_execution_available;
+  $("coding-open").hidden = !status.coding_agent_available;
   $("workers-open").hidden = !status.worker_management_available;
   $("request-analyze").hidden = !status.request_analysis_available;
   $("req-eval-open").hidden = !status.requirements_evaluation_available;
