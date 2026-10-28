@@ -60,7 +60,8 @@ class TaskCreate(Contract):
         for path in paths:
             editable_path(path)
             if (Path(path).suffix not in {".py", ".js", ".html", ".css", ".md", ".json"}
-                    or path.startswith("tests/") or Path(path).name.startswith("test_")
+                    or any(part.lower() in {"tests", "test"} for part in Path(path).parts[:-1])
+                    or Path(path).name.startswith("test") or Path(path).name.endswith("_test.py")
                     or Path(path).name in {"conftest.py", "runner.py", "_roleai_runner.py"}):
                 raise ValueError("Tests and runtime files are read-only in this MVP")
         return paths

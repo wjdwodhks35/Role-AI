@@ -35,7 +35,7 @@ else:
             if report.when == "call" and not report.skipped:
                 self.count += 1
     counter = Counts()
-    code = int(pytest.main(["-q", "-p", "no:cacheprovider"], plugins=[counter]))
+    code = int(pytest.main(["-q", "-p", "no:cacheprovider", "-o", "python_files=test*.py *_test.py"], plugins=[counter]))
     count = counter.count
     if not count and code == 0:
         code = 5

@@ -199,7 +199,8 @@ def test_corrupt_checkpoint_owner_and_symlink_are_rejected(coding, tmp_path):
 
 def test_patch_scope_tests_and_runtime_configuration_cannot_be_bypassed(coding):
     _, store, state, *_ = coding
-    for path in ("tests/test_secret.py", "test_calc.py", ".env", "../outside.py", "qa.xlsx", "role_ai/security.py"):
+    for path in ("tests/test_secret.py", "test_calc.py", "test.py", "testcalc.py", "calc_test.py",
+                 "pkg/tests/fixture.py", ".env", "../outside.py", "qa.xlsx", "role_ai/security.py"):
         with pytest.raises(ValueError):
             TaskCreate(repository_id="fixture", project_id="p", request="x", allowed_files=(path,))
     result, _, _ = run(coding, [{"action": "plan", "plan": ["Break scope"]},
