@@ -5,6 +5,10 @@ Role-AI 1.0의 [단계별 개발 계획](docs/plans/ROLE_AI_1_0_PR_PLAN.md)과
 Coding 작업 계약·격리 worktree 파일 변경은 내부 기반이며, 채팅에서 자동 수정·테스트·복구를
 실행하는 Coding Agent는 아직 활성화되지 않았습니다.
 
+[Coding Strategy Learner v1.1 도입안](docs/plans/CODING_STRATEGY_LEARNER_ROLLOUT.md)의
+R01은 최소 이벤트 계약과 memory/no-op 기록기입니다. 내부에서 명시적으로 호출하며,
+서비스 자동 기록·DB 저장·전략 검색/최적화·모델 학습은 아직 연결하지 않습니다.
+
 지속 학습 Phase 0/1 기반과 GitHub 개발·병합 절차는
 [구현·검증 계획](docs/architecture/CONTINUAL_LEARNING_FOUNDATION.md)을 참고하세요.
 `GET /api/agents`는 로컬 소유자에게 여섯 역할의 정의만 제공합니다.

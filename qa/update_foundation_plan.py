@@ -19,6 +19,7 @@ def main():
         ("test_agent_registry.py", "REQ-AGENT-CONFIG", "역할 구성·권한 경계"),
         ("test_baseline_manifest.py", "REQ-BASELINE", "읽기 전용 기준선"),
         ("test_coding_workspace.py", "REQ-CODING-WORKSPACE", "코딩 작업·격리 파일 변경"),
+        ("test_strategy_events.py", "REQ-STRATEGY-RECORDER", "최소 전략 경험·메모리 기록"),
     ]:
         tree = ast.parse((ROOT / "tests" / filename).read_text())
         for node in tree.body:
@@ -70,6 +71,10 @@ def main():
         (
             "REQ-CODING-WORKSPACE",
             "작업·변경 승인 해시/격리 worktree/원본 보존/경로·수정량 제한/실행 금지/diff",
+        ),
+        (
+            "REQ-STRATEGY-RECORDER",
+            "민감 원문 차단/동의·범위/상태/멱등·용량·장애/기록 off-on 코드·승인 불변",
         ),
     ]:
         if name not in names:
