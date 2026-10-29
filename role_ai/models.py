@@ -6,6 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from role_ai.database import Base
 
+# Register additive metadata without changing any existing content table.
+from role_ai.scope_models import (  # noqa: F401
+    MemoryProvenance, Project, ProjectReadGrant, ResourceVersion, ScopedResource, ScopePolicy,
+)
+
 
 def new_id():
     return str(uuid.uuid4())

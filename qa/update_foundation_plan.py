@@ -22,6 +22,8 @@ def main():
         ("test_strategy_events.py", "REQ-STRATEGY-RECORDER", "최소 전략 경험 기록"),
         ("test_coding_runtime.py", "REQ-CODING-RUNTIME", "코딩 실행·복구·체크포인트"),
         ("test_coding_stability.py", "REQ-CODING-STABILITY", "코딩 모델 연동·패치 복구·토큰 계측"),
+        ("test_project_scopes.py", "REQ-PROJECT-SCOPE", "프로젝트·버전 공유·파생 출처"),
+        ("test_scope_migrations.py", "REQ-SCOPE-MIGRATION", "추가형 범위 이행·복제본·복구"),
     ]:
         tree = ast.parse((ROOT / "tests" / filename).read_text())
         for node in tree.body:
@@ -80,6 +82,8 @@ def main():
             "REQ-CODING-STABILITY",
             "thinking 제어/응답 오류 분류/작업 메모리·반복 중단/패치 정규화·복구/실측 토큰 정산/keep_alive",
         ),
+        ("REQ-PROJECT-SCOPE", "개인 보관함/소유권/정확 버전 읽기 Grant/철회/파생 기억 출처 보존"),
+        ("REQ-SCOPE-MIGRATION", "합성 v3→v4/원문 보존/재실행/실패 rollback/복제 DB·백업 복원/운영 미적용"),
     ]:
         if name not in names:
             coverage.append([name, scope, "자동 검증; 실제 모델·학습·운영 반영 없음"])

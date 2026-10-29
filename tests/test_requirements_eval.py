@@ -248,8 +248,11 @@ def test_v2_migration_preserves_runs_and_requires_backup(tmp_path, monkeypatch):
     with engine.connect() as db:
         assert "requirement_eval_suites" not in inspect(db).get_table_names()
     engine.dispose()
-    assert upgrade_offline(settings, tmp_path / "backup", offline=True)["current"] == 3
+    assert upgrade_offline(settings, tmp_path / "backup", offline=True)["current"] == MIGRATIONS[-1][0]
     verify_backup(tmp_path / "backup")
+    with engine.connect() as db:
+        assert {"requirement_eval_suites", "requirement_eval_runs", "scoped_resources"}.issubset(
+            inspect(db).get_table_names())
 
 
 def test_ollama_concurrency_and_timeout(req_owner, monkeypatch):
