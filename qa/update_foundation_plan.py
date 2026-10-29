@@ -85,6 +85,7 @@ def main():
         ),
         ("REQ-PROJECT-SCOPE", "개인 보관함/소유권/정확 버전 읽기 Grant/철회/파생 기억 출처 보존"),
         ("REQ-SCOPE-MIGRATION", "합성 v3→v4/원문 보존/재실행/실패 rollback/복제 DB·백업 복원/운영 미적용"),
+        ("REQ-SCOPE-PERMISSION", "인증 세션/소유권/정확 버전/정책 세대/철회/파생 출처 읽기 Gate, 실행 권한 확대 금지"),
     ]:
         if name not in names:
             coverage.append([name, scope, "자동 검증; 실제 모델·학습·운영 반영 없음"])

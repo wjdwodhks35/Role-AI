@@ -66,3 +66,5 @@
 - Ruff·diff 검사 통과. 기존 Starlette/httpx deprecation 경고 1건. 실모델·운영 데이터 검증 아님.
 - 변경 파일: `role_ai/permissions.py`, `role_ai/scope_permissions.py`, `tests/test_scope_permissions.py`, `qa/update_foundation_plan.py`, `qa/Role-AI_unit_tests.xlsx`, 이 기록.
 - PR/CI/병합 정보는 실제 확인 후 기록한다. P1-04 이후는 아직 미착수다.
+
+PR 준비 후 QA 요구사항커버리지에 REQ-SCOPE-PERMISSION 행 누락을 보완했다. 348개 테스트 선택자는 동일하고 앱/테스트 코드는 변경하지 않았다. 이 QA 메타데이터 변경 뒤의 최종 head는 GitHub 전체 CI로 재검증한다.
