@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 ProviderName = Literal["ollama", "vllm", "openai", "mock"]
-SkillName = Literal["assistant", "professor", "developer", "code_tester", "doctor", "counselor"]
+SkillName = Literal["assistant", "professor", "developer", "code_tester", "planning", "doctor", "counselor"]
 
 
 class Credentials(BaseModel):
