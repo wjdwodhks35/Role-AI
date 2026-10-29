@@ -22,8 +22,10 @@ def task_view(state, *, detail=False):
         "id", "status", "phase", "created_at", "updated_at", "steps", "calls", "tokens",
         "active_seconds", "retries", "repo_revision", "revision", "tested_revision", "recorder_gap", "error",
     )}
+    usage = state.get("usage") or {}
     result.update(repository_id=state["spec"]["repository_id"], budget=state["spec"]["budget"],
-                  pending=state.get("pending"), progress=None)
+                  model=state["spec"].get("model"), pending=state.get("pending"), progress=None,
+                  usage={k: v for k, v in usage.items() if k != "calls"} or None)
     if detail:
         result.update(allowed_files=state["spec"]["allowed_files"], command=state["spec"]["command"])
         result.update(request=state["spec"]["request"], plan=state["plan"], history=state["history"],
