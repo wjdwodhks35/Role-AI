@@ -8,6 +8,7 @@ from role_ai import models  # noqa: F401 -- register metadata
 from role_ai.backup import create_backup, sqlite_path
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
+from role_ai.scope_schema import SCOPE_TABLES, install_scope_guards, validate_scope_guards
 
 BASELINE = (
     'api_usage', 'auth_sessions', 'auto_approval_audits', 'auto_approval_policies',
@@ -16,7 +17,8 @@ BASELINE = (
     'message_retrievals', 'messages', 'training_jobs', 'users',
 )
 MIGRATIONS = [(1, BASELINE), (2, ('worker_presence', 'worker_controls')),
-              (3, ('requirement_eval_suites', 'requirement_eval_runs'))]
+              (3, ('requirement_eval_suites', 'requirement_eval_runs')),
+              (4, SCOPE_TABLES)]
 
 
 class MigrationRequired(ValueError):
@@ -75,10 +77,18 @@ def initialize_database(engine, *, allow_upgrade=False):
             tables = set(inspect(connection).get_table_names()) - {'schema_migrations'}
             # Fresh DBs or pre-created complete test/import schemas can be initialized safely.
             complete = all(name in tables for _, names in MIGRATIONS for name in names)
-            if tables and status['current'] < status['latest'] and not complete and not allow_upgrade:
+            if (tables and status['current'] < status['latest'] and not allow_upgrade
+                    and (status['current'] > 0 or not complete)):
                 raise MigrationRequired('DB 업그레이드가 필요합니다. 중지·백업 후 python -m role_ai.migrations upgrade를 실행하세요.')
             if tables and not status['current']:
                 validate_tables(connection, BASELINE)
+                # An unversioned import is not an empty fresh DB. Pre-creating
+                # every table must not authorize automatic legacy classification.
+                if not allow_upgrade and any(
+                    connection.execute(text(f'SELECT 1 FROM {name} LIMIT 1')).first()
+                    for name in ('documents', 'memories', 'conversations')
+                ):
+                    raise MigrationRequired('기존 자료가 있는 버전 미기록 DB는 명시적인 오프라인 이행이 필요합니다.')
             connection.exec_driver_sql('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)')
             for version, names in MIGRATIONS:
                 if version > status['current']:
@@ -86,9 +96,22 @@ def initialize_database(engine, *, allow_upgrade=False):
                         raise MigrationRequired('오프라인 마이그레이션이 필요합니다.')
                     Base.metadata.create_all(connection, tables=[Base.metadata.tables[name] for name in names])
                     validate_tables(connection, names)
+                    if version == 4:
+                        from role_ai.project_scopes import classify_legacy_resources
+                        install_scope_guards(connection)
+                        try:
+                            validate_scope_guards(connection)
+                        except ValueError:
+                            raise MigrationRequired('프로젝트 범위 구조를 검증하지 못했습니다. 분류하지 않습니다.') from None
+                        classify_legacy_resources(connection)
                     connection.execute(text("INSERT INTO schema_migrations VALUES (:version, strftime('%Y-%m-%dT%H:%M:%fZ','now'))"), {'version': version})
                 else:
                     validate_tables(connection, names)
+                if version == 4:
+                    try:
+                        validate_scope_guards(connection)
+                    except ValueError:
+                        raise MigrationRequired('프로젝트 범위 무결성 구조가 다릅니다. 자동 수정하지 않습니다.') from None
             if connection.exec_driver_sql('PRAGMA foreign_key_check').fetchone():
                 raise MigrationRequired('외래키 무결성 검사 실패')
             connection.commit()
