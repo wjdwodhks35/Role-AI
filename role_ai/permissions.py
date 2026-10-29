@@ -21,3 +21,8 @@ class PermissionGate:
 
     def evaluate(self, request: PermissionRequest) -> PermissionDecision:
         return PermissionDecision("denied", "Phase 1에서는 도구 실행이 제공되지 않습니다.")
+
+    def evaluate_scoped_read(self, db, session_hash, contract, resource) -> PermissionDecision:
+        """Data read adapter only; evaluate() still denies all external execution."""
+        from role_ai.scope_permissions import ScopeReadGate
+        return ScopeReadGate(db).evaluate(session_hash, contract, resource)

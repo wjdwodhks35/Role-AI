@@ -24,6 +24,7 @@ def main():
         ("test_coding_stability.py", "REQ-CODING-STABILITY", "코딩 모델 연동·패치 복구·토큰 계측"),
         ("test_project_scopes.py", "REQ-PROJECT-SCOPE", "프로젝트·버전 공유·파생 출처"),
         ("test_scope_migrations.py", "REQ-SCOPE-MIGRATION", "추가형 범위 이행·복제본·복구"),
+        ("test_scope_permissions.py", "REQ-SCOPE-PERMISSION", "인증 세션·계약·자료 권한 Gate"),
     ]:
         tree = ast.parse((ROOT / "tests" / filename).read_text())
         for node in tree.body:
