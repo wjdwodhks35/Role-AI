@@ -1,67 +1,19 @@
 <!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#101c2b">
-  <title>Role-AI · Agent Studio (UI Prototype)</title>
-  <link rel="stylesheet" href="./style.css">
-  <script src="./app.js" defer></script>
-</head>
-<body>
-  <a class="skip" href="#main">본문 바로가기</a>
-  <div class="shell">
-    <aside class="sidebar" aria-label="대시보드 메뉴">
-      <div class="brand"><span class="brand-mark">R</span><span>Role-AI<small>Agent Studio</small></span></div>
-      <div class="side-label">WORKSPACE</div>
-      <nav class="nav">
-        <a href="#main" class="active" aria-current="page">▦ <span>작업 현황</span></a>
-        <a href="#office">▤ <span>Agent 사무실</span></a>
-        <a href="#agents">◈ <span>Agent 목록</span></a>
-        <a href="#activity">≡ <span>활동 기록</span></a>
-      </nav>
-      <div class="sidebar-note"><span class="pulse"></span> UI 프로토타입<br><small>샘플 데이터 · 실제 작업 실행 없음</small></div>
-    </aside>
-    <main id="main" class="main">
-      <header class="topbar">
-        <div><div class="eyebrow">ROLE-AI / CONTROL CENTER</div><h1>Agent 작업 현황</h1><p class="sub">누가 어떤 작업을 수행하는지 한눈에 확인하세요.</p></div>
-        <div class="top-actions"><span class="demo-tag">DEMO MODE</span><button id="reset-demo" type="button">데모 초기화</button></div>
-      </header>
-      <section class="metrics" aria-label="요약 지표">
-        <article class="metric"><span>전체 Agent</span><strong id="metric-total">—</strong><small>등록된 데모 Agent</small></article>
-        <article class="metric"><span>실행 중</span><strong id="metric-active">—</strong><small>작업 진행 상태</small></article>
-        <article class="metric"><span>누적 토큰</span><strong id="metric-tokens">—</strong><small>가상 입력 + 출력 토큰</small></article>
-        <article class="metric"><span>완료된 작업</span><strong id="metric-done">—</strong><small>데모 상태 기준</small></article>
-      </section>
-      <section id="office" class="panel office-panel" aria-labelledby="office-heading">
-        <div class="section-head"><div><span class="eyebrow">LIVE WORKSPACE · DEMO</span><h2 id="office-heading">픽셀 Agent 사무실</h2></div><span class="legend"><i class="pulse"></i> 샘플 상태 표시</span></div>
-        <p class="hint">Agent를 선택하면 오른쪽 상세 정보가 바뀝니다. 상태와 토큰은 실제 서버와 연결되지 않았습니다.</p>
-        <div class="office-layout">
-          <div class="office-map" id="office-map" aria-label="Agent 작업 위치">
-            <div class="room room-code"><div class="room-title">⌘ CODE LAB</div><div class="furniture">▥　▥　▥</div><div class="room-agents" data-room="code"></div></div>
-            <div class="room room-research"><div class="room-title">▤ LIBRARY</div><div class="furniture">▤　▤　▤</div><div class="room-agents" data-room="research"></div></div>
-            <div class="room room-test"><div class="room-title">⚙ TEST ROOM</div><div class="furniture">▣　▣　▣</div><div class="room-agents" data-room="test"></div></div>
-            <div class="room room-rest"><div class="room-title">☕ LOUNGE</div><div class="furniture">▰　▰　▰</div><div class="room-agents" data-room="rest"></div></div>
-          </div>
-          <aside class="detail" aria-live="polite">
-            <div class="detail-head"><span id="detail-avatar" class="avatar big">◈</span><div><span class="eyebrow">SELECTED AGENT</span><h3 id="detail-name">Agent 선택</h3><span id="detail-status" class="status">—</span></div></div>
-            <dl class="detail-list"><dt>현재 작업</dt><dd id="detail-task">—</dd><dt>사용 모델</dt><dd id="detail-model">—</dd><dt>입력 토큰</dt><dd id="detail-input">—</dd><dt>출력 토큰</dt><dd id="detail-output">—</dd><dt>실행 시간</dt><dd id="detail-duration">—</dd></dl>
-            <div class="detail-note">읽기 전용 UI · 제어 버튼과 실제 API 연결은 후속 단계에서 추가</div>
-          </aside>
-        </div>
-      </section>
-      <div class="lower">
-        <section id="agents" class="panel" aria-labelledby="agents-heading">
-          <div class="section-head"><div><span class="eyebrow">TEAM</span><h2 id="agents-heading">Agent 목록</h2></div><label class="filter-label">상태 <select id="status-filter"><option value="all">전체</option><option value="running">실행 중</option><option value="testing">테스트</option><option value="idle">대기</option><option value="done">완료</option></select></label></div>
-          <div id="agent-list" class="agent-list"></div>
-        </section>
-        <section id="activity" class="panel" aria-labelledby="activity-heading">
-          <div class="section-head"><div><span class="eyebrow">TIMELINE</span><h2 id="activity-heading">최근 활동</h2></div><span class="demo-tag">SAMPLE</span></div>
-          <ol id="activity-list" class="timeline"></ol>
-        </section>
-      </div>
-      <footer>Role-AI Agent Studio · PixelQG 아이디어 참고 · 독립형 UI 시안 · API/DB 변경 없음</footer>
-    </main>
-  </div>
-</body>
-</html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1420"><title>Role-AI | AI Office</title><link rel="stylesheet" href="./style.css"><script src="./app.js" defer></script></head>
+<body><a class="skip" href="#office">사무실로 이동</a><div class="app">
+<aside class="sidebar"><div class="brand"><div class="brand-icon">R<span>✦</span></div><div>Role-AI<small>PERSONAL WORKSPACE</small></div></div><div class="nav-label">WORKSPACE</div><nav><a href="#overview" class="selected">▦ <span>전체 현황</span></a><a href="#office">▧ <span>AI 사무실</span></a><a href="#agents">♟ <span>Agent 관리</span></a><a href="#logs">≡ <span>작업 기록</span></a></nav><div class="sidebar-bottom"><div class="live-dot"></div><div>LOCAL WORKSPACE<small>데모 데이터 · API 미연결</small></div></div></aside>
+<main class="content"><header class="top"><div><div class="crumb">WORKSPACE <span>/</span> AI OFFICE</div><h1>AI 사무실 <span class="heading-spark">✳</span></h1><p>Agent들이 지금 무엇을 하고 있는지 한눈에 확인하세요.</p></div><div class="top-tools"><span class="demo">● DEMO MODE</span><button id="reset" class="reset" type="button">↺ 초기화</button></div></header>
+<section id="overview" class="overview"><div class="overview-head"><div><span class="eyebrow">CURRENT MISSION</span><h2 id="mission-name">Role-AI Coding Agent 성능 검증</h2><p id="mission-sub">현재 진행 단계와 대기 중인 작업을 표시합니다.</p></div><div class="mission-status"><span class="live-dot"></span><span id="mission-state">테스트 진행 중</span></div></div><div class="progress-head"><span>전체 작업 흐름</span><strong id="progress-label">2 / 4 단계</strong></div><div class="stages" id="stages" aria-label="작업 단계"></div><div class="meter"><div id="meter-fill"></div></div><div class="stats"><div><span>활성 Agent</span><strong id="stat-active">—</strong></div><div><span>대기 작업</span><strong id="stat-queue">—</strong></div><div><span>총 토큰 <small>(샘플)</small></span><strong id="stat-tokens">—</strong></div><div><span>승인 대기</span><strong id="stat-approval">—</strong></div></div></section>
+<div class="work-grid"><section id="office" class="office panel"><div class="panel-head"><div><span class="eyebrow">LIVE OFFICE · PIXEL WORLD</span><h2>Agent Office <span class="title-sub">2D 작업 공간</span></h2></div><span class="scene-legend"><i class="live-dot"></i> 상태 시뮬레이션</span></div><div class="office-scene" id="scene" aria-label="픽셀아트 Agent 사무실">
+<div class="wall"><div class="window"><div class="window-sky">✦　✧　✦</div><div class="window-city">▂▅▃▇▅▂▆</div></div><div class="wall-title">ROLE-AI <span>OFFICE</span></div><div class="clock">◷ 10:24</div></div>
+<div class="floor"><div class="room-title coding-label">CODE ZONE</div><div class="room-title test-label">TEST ZONE</div><div class="room-title rest-label">LOUNGE</div><div class="carpet"></div>
+<div class="desk desk-a"><div class="screen"><span>▤</span></div><div class="desk-top"></div><div class="desk-leg"></div></div>
+<div class="desk desk-b"><div class="screen"><span>▥</span></div><div class="desk-top"></div><div class="desk-leg"></div></div>
+<div class="desk desk-c"><div class="screen"><span>▣</span></div><div class="desk-top"></div><div class="desk-leg"></div></div>
+<div class="plant plant-a">♣<span>▣</span></div><div class="plant plant-b">♣<span>▣</span></div><div class="sofa">▰▰▰<span>LOUNGE</span></div><div class="coffee">☕</div>
+<div id="office-avatars" class="office-avatars"></div></div></div>
+<div class="office-footer"><span>캐릭터를 클릭하면 상세 정보가 표시됩니다.</span><span>● 작업　◆ 테스트　○ 대기　! 오류/승인</span></div></section>
+<aside class="detail panel" aria-label="선택한 Agent 상세 정보"><div class="panel-head"><div><span class="eyebrow">AGENT INSPECTOR</span><h2>Agent 상세</h2></div><span id="detail-state" class="state">—</span></div><div class="profile"><div id="profile-pixel" class="profile-pixel"></div><div><h3 id="detail-name">—</h3><p id="detail-role">—</p></div></div><div class="detail-section"><span class="eyebrow">CURRENT TASK</span><p class="task" id="detail-task">—</p></div><div class="detail-section"><span class="eyebrow">TASK PROGRESS</span><div class="mini-stages" id="detail-stages"></div></div><dl class="detail-rows"><dt>사용 모델</dt><dd id="detail-model">—</dd><dt>입력 토큰</dt><dd id="detail-input">—</dd><dt>출력 토큰</dt><dd id="detail-output">—</dd><dt>실행 시간</dt><dd id="detail-time">—</dd></dl><div class="resource-head"><span class="eyebrow">SYSTEM RESOURCES</span><span class="resource-tag">DEMO</span></div><div id="resource-bars" class="resource-bars"></div><div class="detail-foot">실제 GPU·CPU·RAM 값은 상태 API 연결 후 표시됩니다.</div></aside></div>
+<div class="bottom-grid"><section id="agents" class="panel agents-panel"><div class="panel-head"><div><span class="eyebrow">AGENT TEAM</span><h2>Agent 현황</h2></div><label class="filter">상태 <select id="filter"><option value="all">전체</option><option value="running">작업 중</option><option value="testing">테스트</option><option value="waiting">승인 대기</option><option value="idle">휴식 / 대기</option><option value="failed">오류</option></select></label></div><div id="agent-list" class="agent-list"></div></section>
+<section id="logs" class="panel log-panel"><div class="panel-head"><div><span class="eyebrow">EVENT STREAM</span><h2>작업 로그 · 알림</h2></div><span class="resource-tag">샘플 기록</span></div><div class="log-tabs" role="group" aria-label="기록 필터"><button type="button" data-log="all" aria-pressed="true">전체</button><button type="button" data-log="error" aria-pressed="false">오류</button><button type="button" data-log="approval" aria-pressed="false">승인 대기</button></div><ol id="log-list" class="log-list"></ol></section></div>
+<footer>Role-AI · PixelQG에서 영감을 받은 독립형 UI 프로토타입 · 서버 실행 및 데이터 변경 없음</footer></main></div></body></html>
