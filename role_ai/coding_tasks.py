@@ -7,6 +7,8 @@ from pathlib import PurePosixPath
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from role_ai.task_contracts import ResourceBudget, ResourceRef, ReviewPolicy, TaskContract
+
 SHA256 = r"^[0-9a-f]{64}$"
 IDENTIFIER = r"^[a-zA-Z0-9_-]{1,64}$"
 
@@ -120,3 +122,43 @@ def change_digest(spec: CodingTaskSpec, changes: tuple[FileChange, ...]) -> str:
     return digest({"task": task_digest(spec), "changes": [
         change.model_dump(mode="json") for change in changes
     ]})
+
+
+def task_contract_from_coding(
+    spec: CodingTaskSpec, *, goal: str, acceptance_criteria: tuple[str, ...],
+    policy_version: int, review_policy: ReviewPolicy, approval_reference: str | None = None,
+) -> TaskContract:
+    """Describe an existing spec without approving it or adding any tool permissions.
+
+    Authentication and current project/repository bindings remain the caller's
+    responsibility. Existing task_digest/change_digest are intentionally unchanged.
+    """
+    checked = CodingTaskSpec.model_validate_json(spec.model_dump_json())
+    return TaskContract(
+        task_id=checked.task_id, user_id=checked.user_id, scope="project",
+        project_id=checked.project_id, agent_id="coding", goal=goal,
+        acceptance_criteria=acceptance_criteria,
+        allowed_resources=(ResourceRef(
+            kind="repository", resource_id=checked.repository_id, version=checked.base_commit,
+            paths=checked.allowed_files,
+        ),),
+        budget=ResourceBudget(**checked.budget.model_dump()), risk_level="high",
+        review_policy=review_policy, policy_version=policy_version,
+        approval_reference=approval_reference,
+    )
+
+
+def coding_spec_from_task_contract(contract: TaskContract) -> CodingTaskSpec:
+    """Lossless Coding metadata conversion only; never an authorization check."""
+    checked = TaskContract.model_validate_json(contract.model_dump_json())
+    if (checked.agent_id != "coding" or checked.scope != "project"
+            or len(checked.allowed_resources) != 1
+            or checked.allowed_resources[0].kind != "repository"):
+        raise CodingBoundaryError("A project-scoped Coding repository contract is required")
+    resource = checked.allowed_resources[0]
+    # Apply every original path and budget validator, including protected files.
+    return CodingTaskSpec(
+        task_id=checked.task_id, user_id=checked.user_id, project_id=checked.project_id,
+        repository_id=resource.resource_id, base_commit=resource.version,
+        allowed_files=resource.paths, budget=CodingBudget(**checked.budget.model_dump()),
+    )
