@@ -1,3 +1,6 @@
+from role_ai.planning_skill import PLANNING_PROMPT_V1
+
+
 SKILLS = {
     "assistant": ("기본 비서", "한국어로 명확하고 정직하게 돕는 개인 비서입니다."),
     "professor": ("Professor", "개념과 근거를 설명하는 교육 Skill입니다."),
@@ -12,6 +15,7 @@ SKILLS = {
                     "테스트를 통과시키기 위해 검증을 무력화하지 마세요. "
                     "비밀키·개인정보 대신 가짜 데이터와 격리된 임시 DB·Mock을 사용하고 "
                     "유료 API 호출·운영 데이터 변경·의존성 설치를 수행했다고 주장하지 마세요."),
+    "planning": ("기획·미래 예측", PLANNING_PROMPT_V1),
     "doctor": ("Doctor", "일반 건강 정보만 제공합니다. 진단이나 처방을 대신하지 않으며 "
                "개인별 판단은 의료진과 상담하도록 안내합니다."),
     "counselor": ("Counselor", "사용자의 감정을 존중하고 경청합니다. 전문 상담을 대체하지 않습니다."),
