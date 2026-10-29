@@ -1,29 +1,37 @@
-# Role-AI Agent Studio — PixelQG-inspired UI prototype
+# Role-AI — Isometric Agent Control Center (UI prototype)
 
-**Status:** isolated static UI concept; not integrated into the Role-AI application.
+## Status
+Standalone static demo on the **feature/pixelqg-agent-ui** branch. **Not connected to production Role-AI** and **not merged into dev**.
 
-## Purpose
-- Pixel-art-inspired agent work rooms (code, research, test, lounge)
-- Per-agent status, model, task, input/output tokens, and elapsed-time details
-- Agent list filtering, activity timeline, and mobile-responsive layout
-- Korean UI, keyboard-operable controls, no remote assets or external dependencies
+This layout implements the selected mockup:
+- Isometric six-room agent office concept (CSS-drawn, no copied PixelQG source or artwork).
+- Clickable Agent characters, with a **right-side detail inspector** showing selected agent role, task, stage, model, tools, token metrics, CPU/GPU/memory demo bars and agent activity tabs.
+- Top project phase tracker.
+- **Four bottom panels in the approved order:** 전체 진행 현황 → 주요 지표 → 실시간 로그 → 승인 대기.
+- Responsive desktop/mobile layout, keyboard-focusable controls, local static assets only.
 
 ## Preview
-Open `index.html` in a local browser. No build step or API server required.
+Open `ui-prototypes/pixelqg/index.html` in a browser (no build, server, or external dependency required).
 
-## Safety and data
-All agent names, token counts, statuses, and timestamps are **hardcoded demo fixtures** in `app.js`.
-No live metrics, API requests, authentication changes, execution controls, or data writes.
-This prototype does not change `role_ai/static/`, FastAPI routes, Docker, SQLite, or Cloudflare settings.
+## Interaction
+- Click or keyboard-activate any agent character to update the right-side panel.
+- Switch the inspector tabs: 작업 정보 / 성능 지표 / 실행 로그.
+- Filter log events by 전체 / 오류.
+- Click demo approval buttons to mark a sample approval; **no actual permissions or requests are sent**.
+- Click 기본 선택 to reset the inspector.
 
-## Future integration checklist
-1. Design a read-only authenticated agent-status endpoint with per-user authorization.
-2. Replace demo fixtures with sanitized, rate-limited status polling or events.
-3. Separate measured token counts from estimated/unsupported counters.
-4. Stop updates on logout; protect session/CSRF as appropriate for chosen transport.
-5. Add accessibility, browser and mobile tests before exposing the view.
-6. Review PixelQG attribution/license requirements before reusing any upstream code/assets.
+## Important limitations
+- This is an **approximation** of the approved high-detail isometric concept using CSS shapes and text glyphs. It does **not** reproduce the illustrated image pixel-for-pixel. Creating equivalent character sprites and room tiles requires a separate, licensed image asset implementation.
+- All displayed agents, progress, tokens, CPU/GPU/memory, times, and logs are **hardcoded demo data**, not measured values. Some displayed sample statistics are intentionally illustrative and should not be interpreted as live metrics.
+- No network requests, model calls, agent execution, filesystem writes, authentication/DB/API changes, or deployment.
+- The local approval controls change **only in-memory demo UI state**.
 
-Reference: https://github.com/hugobertagna/pixelqg-app (visual concept only; no upstream source or assets copied).
+## Next step after user review
+1. Replace CSS office with original licensed pixel-art/isometric sprite and tile assets.
+2. Add read-only authenticated status endpoints, explicit authorization and measured metrics.
+3. Bind approval controls only after a separate permission/security review and explicit approval.
+4. Browser/mobile/accessibility regression tests and security review before merging.
 
-This is a UI branch only. Do not merge into `dev` until explicitly reviewed and approved.
+Inspiration only: https://github.com/hugobertagna/pixelqg-app
+
+No upstream source code or art assets were copied.
