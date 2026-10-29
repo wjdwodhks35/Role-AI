@@ -36,3 +36,6 @@ node_modules/
 Thumbs.db
 
 qa/results/
+
+# Private command logs: originals may contain sensitive output.
+.codex-local/
