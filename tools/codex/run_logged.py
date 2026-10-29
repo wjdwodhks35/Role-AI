@@ -120,18 +120,23 @@ def secure_directory(path: Path) -> None:
         if os.name == "nt":
             # Read identities only; icacls modifies the DACL without SACL privileges.
             quoted_path = str(path).replace("'", "''")
+            # Use framework ACL APIs directly: inherited PSModulePath can select
+            # PowerShell 7 modules incompatible with Windows PowerShell 5.1.
             script = (
                 "$ErrorActionPreference='Stop'; "
-                f"$acl=Get-Acl -LiteralPath '{quoted_path}'; "
-                "@{current=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; "
-                "identities=@($acl.Access | ForEach-Object { $_.IdentityReference.Translate("
-                "[System.Security.Principal.SecurityIdentifier]).Value })} | ConvertTo-Json -Compress"
+                f"$acl=[System.IO.Directory]::GetAccessControl('{quoted_path}'); "
+                "[Console]::Out.WriteLine([System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value); "
+                "foreach($rule in $acl.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier])) "
+                "{ [Console]::Out.WriteLine($rule.IdentityReference.Value) }"
             )
             query = subprocess.run(
                 ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
                 capture_output=True, check=True,
             )
-            identities = json.loads(query.stdout)
+            sids = query.stdout.decode("ascii").splitlines()
+            if not sids or any(not re.fullmatch(r"S-\d+(?:-\d+)+", sid) for sid in sids):
+                raise OSError("Unexpected Windows ACL identity output")
+            identities = {"current": sids[0], "identities": sids[1:]}
             current = identities["current"]
             subprocess.run(
                 ["icacls", str(path), "/inheritance:r", "/grant:r", f"*{current}:(OI)(CI)F"],

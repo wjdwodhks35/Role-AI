@@ -180,6 +180,15 @@ class CommandTests(unittest.TestCase):
         self.assertNotIn(b'(I)', acl.stdout)
         self.assertEqual(acl.stdout.count(b'(F)'), 1, acl.stdout)
 
+    @unittest.skipUnless(os.name == 'nt', 'Windows module-path isolation')
+    def test_windows_acl_does_not_depend_on_powershell_modules(self):
+        env = dict(os.environ, PSModulePath=str(Path(self.tmp.name) / 'empty-modules'))
+        result = subprocess.run([sys.executable, str(SCRIPT), '--log-root', str(self.root), '--',
+                                 sys.executable, '-c', 'print("isolated modules")'], env=env,
+                                capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors='replace'))
+        self.assertIn(b'isolated modules', result.stdout)
+
     def test_unique_run_paths(self):
         _, first, _ = self.execute('print("one")')
         _, second, _ = self.execute('print("two")')

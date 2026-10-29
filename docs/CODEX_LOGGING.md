@@ -76,7 +76,7 @@ P1-02 데이터 모델·Migration·기존 미커밋 자료는 변경하지 않�
 | 1 요구사항 | PR #23 원본 cap은 중간 바이트를 버림 → 원본 전체 저장/미리보기 cap 분리 | 디스크 장애 시 불완전 |
 | 2 논리 | 짧은 출력에 헤더가 붙음 → 일반 짧은 출력 그대로, 줄어들 때만 요약 | 마스킹 필요 시 안내 증가 |
 | 3 사실 | 내부 Codex 자동 후킹 근거 없음 → 공식 AGENTS+명시적 CLI | 지침 준수는 모델 행동에 의존 |
-| 4 현실성 | Windows Python에서 실제 테스트, stdlib만 사용 | Python/PowerShell/icacls 필요 |
+| 4 현실성 | Windows CI의 Get-Acl 조회 실패 → 모듈에 의존하지 않는 .NET ACL 조회로 변경 | Python/PowerShell/icacls 필요 |
 | 5 아키텍처 | 보조 도구/별도 CI로 앱·P1-02와 파일 분리 | PR #23 도구 중복, #24 ignore/#26 AGENTS 수동 조정 필요 |
 | 6 보안/복구 | quoted secret/PEM 마스킹·private ACL·Git ignore 추가 | 임의 비밀 패턴 탐지 보장 없음 |
 | 7 자원 | 원본 읽기와 화면 크기 제한, 실제 문자/바이트 측정 | 실행 중 원본 디스크는 무제한 |
@@ -86,8 +86,10 @@ P1-02 데이터 모델·Migration·기존 미커밋 자료는 변경하지 않�
 
 진행 판단: 개발 보조 도구로 사용 가능. 보안 마스킹/디스크 한계와 생략 표식을 지침에 따라 다룬다.
 
-로컬 검증 결과: WSL Python 3.12 전용 23개 중 22 통과/Windows ACL 1 skip,
-Windows Python 3.13 전용 23개 중 21 통과/POSIX 전용 2 skip.
+로컬 검증 결과: WSL Python 3.12 전용 24개 중 22 통과/Windows 전용 2 skip,
+Windows Python 3.13 전용 24개 중 22 통과/POSIX 전용 2 skip.
 기존 Role-AI 전체 회귀는 648 passed, 기존 Starlette/httpx deprecation warning 1건이며 실패는 없다.
 Windows 합성 비교는 short 4→4, long_success 62,019→107, failure 62,105→194 문자였다.
 별도 CI는 Ubuntu/Windows Python 3.12를 실행한다. PR의 CI 결과는 PR checks에서 확인한다.
+
+Windows ACL 조회는 PowerShell Get-Acl/ConvertTo-Json 모듈 로딩에 의존하지 않는 .NET Framework API를 사용한다. 비어 있는 PSModulePath에서도 조회/권한 설정을 검증한다. 초기 Windows CI 실패를 숨기거나 skip하지 않고 수정 후 전체 CI를 다시 확인한다.
