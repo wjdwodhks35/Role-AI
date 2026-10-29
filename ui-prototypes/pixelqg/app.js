@@ -33,7 +33,7 @@ function renderOffice(){
 const root=$("office-avatars");root.replaceChildren();
 for(const a of agents){
 const b=el("button","agent-sprite");b.type="button";b.style.left=a.x+"%";b.style.top=a.y+"%";b.style.setProperty("--agent-color",a.color);b.setAttribute("aria-label",a.name+" 상세 보기");b.setAttribute("aria-pressed",String(a.id===selected));
-b.append(el("span","agent-label",a.name),el("span","agent-character",a.glyph),el("span","agent-state",stateText(a.state)));b.addEventListener("click",()=>{selected=a.id;renderOffice();renderDetail();});root.append(b);
+b.append(el("span","agent-label",a.name),el("span","agent-character",a.glyph),el("span","agent-state",stateText(a.state)));b.addEventListener("click",()=>selectAgent(a.id));root.append(b);
 }}
 function stateText(state){return {running:"작업 중",testing:"테스트 중",idle:"대기",failed:"오류"}[state]||"대기";}
 function renderDetail(){
@@ -66,5 +66,76 @@ row.append(info,actions);root.append(row);}
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;renderDetail();}));
 document.querySelectorAll("[data-log]").forEach(b=>b.addEventListener("click",()=>{logFilter=b.dataset.log;renderLogs();}));
-$("detail-reset").addEventListener("click",()=>{selected="developer";tab="work";renderOffice();renderDetail();});
+
 renderStages();renderOffice();renderDetail();renderBottom();renderLogs();renderApprovals();
+
+let currentView="dashboard";
+function isActive(agent){return agent.state==="running"||agent.state==="testing";}
+function selectAgent(id){
+  if(!agents.some(agent=>agent.id===id))return;
+  selected=id;tab="work";
+  showView("dashboard");
+  $("detail-agent-list").hidden=true;
+  $("detail-list-button").setAttribute("aria-expanded","false");
+  renderOffice();renderDetail();renderAgentPicker();renderDirectory();
+}
+function showView(view){
+  currentView=view==="agents"?"agents":"dashboard";
+  $("dashboard-view").hidden=currentView!=="dashboard";
+  $("agents-view").hidden=currentView!=="agents";
+  document.querySelectorAll("[data-view]").forEach(button=>{
+    const active=button.dataset.view===currentView;
+    button.classList.toggle("selected",active);
+    button.setAttribute("aria-pressed",String(active));
+  });
+}
+function agentEntry(agent,cls){
+  const button=el("button",cls);
+  button.type="button";
+  button.setAttribute("aria-label",agent.name+" 상세 정보 보기");
+  button.setAttribute("aria-pressed",String(selected===agent.id));
+  const avatar=el("span","agent-entry-avatar",agent.glyph);
+  avatar.style.color=agent.color;
+  const body=el("span","agent-entry-body");
+  body.append(el("strong","",agent.name),el("small","",agent.role));
+  const state=el("span","agent-entry-state "+agent.state,stateText(agent.state));
+  button.append(avatar,body,state);
+  button.addEventListener("click",()=>selectAgent(agent.id));
+  return button;
+}
+function renderAgentPicker(){
+  const root=$("detail-list-items");
+  root.replaceChildren();
+  for(const [title,items] of [
+    ["현재 활동 중",agents.filter(isActive)],
+    ["쉬는 중 / 대기",agents.filter(a=>!isActive(a))]
+  ]){
+    root.append(el("div","detail-list-group-title",title+" · "+items.length));
+    if(items.length)items.forEach(a=>root.append(agentEntry(a,"detail-list-row")));
+    else root.append(el("p","directory-empty","해당 에이전트가 없습니다."));
+  }
+}
+function renderDirectory(){
+  const active=agents.filter(isActive),idle=agents.filter(a=>!isActive(a));
+  $("active-count").textContent=active.length+"명";
+  $("idle-count").textContent=idle.length+"명";
+  const stats=$("directory-stats");stats.replaceChildren();
+  for(const [label,value] of [["전체 에이전트",agents.length],["작업 / 테스트 중",active.length],["쉬는 중 / 대기",idle.length]]){
+    const card=el("div","directory-stat");
+    card.append(el("span","",label),el("strong","",String(value)));
+    stats.append(card);
+  }
+  for(const [id,items] of [["active-agents",active],["idle-agents",idle]]){
+    const root=$(id);root.replaceChildren();
+    if(!items.length)root.append(el("p","directory-empty","해당 에이전트가 없습니다."));
+    items.forEach(a=>root.append(agentEntry(a,"directory-agent-card")));
+  }
+}
+document.querySelectorAll("[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
+$("detail-list-button").addEventListener("click",()=>{
+  const list=$("detail-agent-list");
+  list.hidden=!list.hidden;
+  $("detail-list-button").setAttribute("aria-expanded",String(!list.hidden));
+  if(!list.hidden)renderAgentPicker();
+});
+renderAgentPicker();renderDirectory();showView("dashboard");
