@@ -213,18 +213,9 @@ def main():
     from role_ai.coding_jobs import CodingJobStore, checksum
 
     started = time.monotonic()
-    conditions = checksum(
-        {
-            "task_digest": public["task_digest"],
-            "image": settings.coding_image,
-            "seed": args.seed,
-            "budget": ResourceBudget(
-                max_files=2, max_steps=8, max_retries=0, timeout_seconds=300
-            ).model_dump(mode="json"),
-            "runner_memory_mib": 128,
-            "runner_cpu_millicores": 500,
-        }
-    )
+    from role_ai.task_comparison import conditions_digest
+
+    conditions = conditions_digest(args.task, args.seed, args.image)
     try:
         try:
             verify_runtime(settings, root)

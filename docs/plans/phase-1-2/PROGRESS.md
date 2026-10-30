@@ -144,3 +144,13 @@ PR #45 https://github.com/wjdwodhks35/Role-AI/pull/45, CI41073430341(4)/41073430
 ## P2-D — 증거 기반 성능 계측
 
 시작 dev1e340ab5… (#45), feature/p2-d-evaluation-metrics. strict 측정 기록/실제·합성 구분/실패 분모/미측정null/장치 VRAM observer 및 private 원문·중복 실행 보존. 관련48개 통과, 실제 GPU observer3샘플·오류0·관측1787MiB(model_calls0, 모델 성능 아님). 전체 QA465시나리오/900실행 통과(snapshot hz7wtce0, app/tests 해시 일치), Ruff/diff 및 QA 재갱신0행. 실제 Docker용 QA checker는 이후 측정 변환을 연결했으므로 최종 CI에서 추가 검증한다. CI·병합 확인 전 완료 처리하지 않는다. 10 Pass는 P2-D_REVIEW.md, 운영 변경 없음.
+
+## P2-D 병합 수신 및 실제 구성 요소 검사
+
+PR #46 https://github.com/wjdwodhks35/Role-AI/pull/46, CI41075190144(4)/41075190142(2) 모두 success. dev merge `6ec1c88707589d1bcad6f0fd7a7cb1d7437cc22e`, tree5c5b9c62… 확인. 실제 read-only 모델 계획1회 backend87+32 tokens/9.261871s/장치peak5568MiB(18샘플), 종료resident0. 독립 코딩 채점이 없어 common interrupted·전체 품질 점수 없음.
+
+## P2-E — 비교/공개 기준선·독립 채점 구현, 실제 A/B 미완료
+
+시작 dev6ec1c887… (#46), feature/p2-e-comparison-report. 동일10과제/seed·조건·구현·반복 수 검증, 품질 회귀/미측정/공정성·CI 근거 부족 시 개선 차단. 공개 패키지와 합성 DB 독립 baseline grader 준비, 미검증 작성 주체는 실제 집계 제외. 관련45개 통과 후 추가 CLI 회귀/제공자 수신 테스트 포함 최종 전체 QA479시나리오/922실행 통과(snapshot gmqodo8e, app/qa/tests SHA256 일치). Ruff/diff 통과. 실제 비교 A0/B0/exit2로 미완료 확인.
+
+필요한 요청은 REQUESTS.md, 실제 진행/수치/미측정은 PERFORMANCE_REPORT.md, 10 Pass는 P2-E_REVIEW.md. 실제 A/B 및 Docker 접근/공정성 근거가 없어 P2-E는 Draft PR/미병합 상태로 보존한다. CI green만으로 전체 목표 완료 처리하지 않는다.
