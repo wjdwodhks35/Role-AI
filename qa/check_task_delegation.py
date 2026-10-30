@@ -45,6 +45,7 @@ with tempfile.TemporaryDirectory(prefix="role-ai-delegation-ci-") as temporary:
         "synthetic-not-an-installed-model",
         os.environ["ROLE_AI_CODE_EXECUTION_IMAGE"],
         "budget-check",
+        socket=os.environ.get("ROLE_AI_CODE_EXECUTION_SOCKET"),
     )
     try:
         verify_runtime(settings, Path(temporary))
@@ -120,7 +121,9 @@ with tempfile.TemporaryDirectory(prefix="role-ai-direct-ci-") as baseline_root:
     (Path(baseline_root) / "budget-check" / "solution.py").write_text(
         reference_source("budget-check")
     )
-    baseline = grade_baseline(baseline_root, "budget-check")
+    baseline = grade_baseline(
+        baseline_root, "budget-check", socket=os.environ.get("ROLE_AI_CODE_EXECUTION_SOCKET")
+    )
     baseline_metric = MetricRecord.model_validate_json(json.dumps(baseline["metrics"]))
     assert baseline_metric.success and baseline_metric.test_evidence == "offline_docker"
     assert (

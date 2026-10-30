@@ -37,3 +37,20 @@
 공식 Codex usage 이벤트가 있다는 사실과 현재 원문을 확보했다는 주장을 분리했다. 관리자 준비/공정한 기준선/실제 사용량이 필요하다는 상태는 유지한다.
 
 소켓 후속 최종 검증: QA486시나리오/952실행 통과. snapshot _qkvn9fx와 app/QA/tests SHA256 일치, Ruff/diff 통과. `sudo -n -l`은 password required이므로 관리자 인증이 필요한 패키지 준비는 수행하지 않았다. 소켓·서비스 권한을 우회하지 않는다. 새 head CI는 PR 수신으로 기록한다.
+
+## 실제 Rootless/B10 실행 후 10 Pass (2026-10-31 KST)
+
+|관점|새 발견/조치|잔여 위험|
+|---|---|---|
+|1 요구|사용자 설치 후 B10과제 실행·실패 포함 집계|A0으로 비교 미완료|
+|2 정책|Codex 미측정 허용을 원문 지시와 재대조·잘못된 추가 승인 요구 정정|미측정에서 절감률 추정 금지|
+|3 사실|4/10성공, 채점7건39/42, 미채점3건 구분|단일 시도·소형 합성 과제 일반화 불가|
+|4 실행|QA fixture의 endpoint 덮어쓰기 발견·명시 전달·실제 Docker 통과|daemon 재시작 시 재검증 필요|
+|5 구조|기존 계약/독립 grader/backup·합성 DB 재사용|서로 다른 측정 시간 경계 혼합 금지|
+|6 보안|rootless 실제 nonroot/readonly/networknone/no secrets·승인 유지|동일 host 사용자·GPU 공유 완전 격리 아님|
+|7 자원|memory/swap/CPU/pids kernel 값 직접 확인·GPUpeak5447|VRAM 물리 hard cap 아님|
+|8 실패|승인 시각 역행 관측·fail-closed 보존·동일 과제 재시도 없음|호스트 clock 원인 해소 미검증|
+|9 반론|점수 부족/예산 제한/미채점을 성공으로 바꾸지 않음|low B quality를 토큰 절약으로 정당화 불가|
+|10 재통합|원문 private 보관·A 독립성 요청·Draft 유지|최종 head CI와 A 비교 충족 전 병합 금지|
+
+추가 독립 AI 리뷰가 아닌 10관점 자체 재검토다. core source digest f028…4061 유지, 이번 코드 변경은 QA socket 전달뿐이다. 최초 안전 검사 실패와 후속 통과를 함께 기록한다.

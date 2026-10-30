@@ -1,4 +1,15 @@
-# 격리 개발 Rootless 환경 준비안 — 관리자 준비 미완료
+# 격리 개발 Rootless 환경 — 실제 준비·검증 완료
+
+2026-10-31 KST. 사용자가 uidmap을 설치했고 newuidmap/newgidmap을 확인했다. 기존 Docker29.1.3과 공식 호환 rootless extras를 사용자 private 경로에서 실행했다. 운영 Docker 정지/권한/context 변경·지속 사용자 서비스 설치·linger 활성화는 수행하지 않았다. 관리자가 추가로 준비할 항목은 현재 없다.
+
+실제 kernel 제한, rootless/cgroup-v2/systemd, timeout/OOM/network-none/read-only/nonroot/cleanup 검증을 마쳤다. 상세 결과와 초기 승인 실패의 clock 위험은 PERFORMANCE_REPORT.md를 참고한다. QA endpoint 전달 수정 후 실제 위임/독립 채점도 통과했다. 실패 기록은 제거하지 않았다.
+
+사용자 daemon의 전용 socket/data/pid/log identity는 Git 밖 `P2E_ROOTLESS_RUNTIME.json`에 보관한다. 영구 서비스가 아니므로 세션/daemon 종료 후 재검증이 필요하며 socket inode가 바뀌면 기존 승인은 무효다. 정리는 이 실험 daemon만 중단하고 결과·DB를 보존한다. 운영 daemon/기존 이미지/volume·uidmap 패키지를 자동 제거하지 않는다.
+
+공식 artifact SHA256 `32dc3dd0d8b512ccf30a7efe84d360b5ade65ac4fec92a2a5ad0fe791da6ab0d`는 다운로드한 바이트 식별값이다. HTTPS 공식 배포 경로는 확인했지만 별도 배포자 checksum/signature 대조는 하지 않았으므로 `published_checksum_verified=false`다.
+
+## 이전 사전 검토 기록 — 설치 전 상태
+
 
 2026-10-31 KST. 사용자 "추천안대로 진행"에 따라 로컬 socket 연결 구현과 읽기 전용 사전 검토를 진행했다. 이 문서는 실제 설치/서비스 생성 완료 수신이 아니다. 운영 Docker/서비스/DB/권한·전역 context는 변경하지 않았다.
 

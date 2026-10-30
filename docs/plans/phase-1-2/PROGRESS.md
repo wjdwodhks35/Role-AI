@@ -158,3 +158,9 @@ PR #46 https://github.com/wjdwodhks35/Role-AI/pull/46, CI41075190144(4)/41075190
 ## P2-E 추천안 후속 구현 (2026-10-31 KST)
 
 기존 Draft #47/head ae1012721…에서 사용자 승인 추천안을 진행했다. A/B 명시적 private rootless Unix socket 선택, inode·소유권 live 승인 바인딩, 기존 Docker resource/image preflight 재사용을 추가했다. 관련80개 통과 후 malformed info 거부를 보강한 최종 전체 QA486시나리오/952실행 통과(snapshot _qkvn9fx, app/QA/tests SHA256 일치), Ruff/diff 통과. Rootless 실제 실행은 아직 미검증이며 uidmap 관리자 준비가 필요하다. 상세 준비안은 ROOTLESS_SETUP_PLAN.md, 공식 usage 근거/수집 공백은 CODEX_USAGE_PROTOCOL.md, 새 공개 패키지·남은 조건은 REQUESTS 최신 절을 참고한다. 새 코드/QA/CI 검증 후 같은 P2-E Draft PR에 반영하며 실측 근거 부족 상태에서는 병합하지 않는다.
+
+## P2-E 실제 환경 및 B10 실행 수신 (2026-10-31 KST)
+
+사용자 uidmap 설치 확인 후 private Rootless daemon에서 kernel 자원 제한·기존 CodeExecutor·Coding runtime·독립 grader·위임 통합을 검증했다. QA synthetic fixture가 env socket을 덮어쓰는 문제만 명시 전달로 수정했다. core 구현 digest f028…4061은 그대로다. 전체 QA486/952는 이전 검증이며 이번에 반복 실행했다고 표현하지 않는다.
+
+고정 B10시도:4성공/3최종 채점 실패/2예산 제한/1모델 전 승인 차단. 채점7건39/42, 미채점18/60사례. 측정 backend 소계40,590(9건)/56호출, 외부 supervisor362.933235s, 장치 peak5447MiB. 실제 clock 역행으로 승인 fail-closed한 기록을 보존했고 권한/시계를 바꾸지 않았다. A0/Codex usage null/절감률 null이며 PR #47 Draft·미병합 유지. 최신 세부 수치/요청은 PERFORMANCE_REPORT/REQUESTS의 현재 절을 우선한다. 새 head CI 수신은 PR/외부 상태에 기록한다.
