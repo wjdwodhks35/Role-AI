@@ -121,7 +121,7 @@ function addMessage(message) {
     references.append(label);
     for (const source of message.sources) {
       references.append(actionButton(source.filename + " · 발췌 " + source.position, async () => {
-        const record = await api("/api/documents/" + source.document_id);
+        const record = await api(scopedURL("/api/documents/" + source.document_id));
         $("documents-results").textContent = record.content;
         $("documents-dialog").showModal();
       }));
@@ -165,6 +165,8 @@ async function openConversation(conversation) {
   resetPaidQuote();
   resetRequestPreview();
   activeConversation = conversation; $("chat-title").textContent = conversation.title;
+  if (typeof conversation.project === "string") $("project").value = conversation.project;
+  selectedDocuments.clear();
   $("messages").replaceChildren();
   if (!messages.length) emptyState();
   else messages.forEach(addMessage);
@@ -262,7 +264,7 @@ $("message").addEventListener("keydown", (event) => {
   if (event.repeat || busy || $("send").disabled || !$("message").value.trim()) return;
   $("chat-form").requestSubmit($("send"));
 });
-$("project").addEventListener("input", resetPaidQuote);
+$("project").addEventListener("input", () => { resetPaidQuote(); selectedDocuments.clear(); });
 $("skill").addEventListener("change", () => {
   resetPaidQuote();
   $("engine-badge").textContent = $("skill").selectedOptions[0].textContent;
@@ -296,7 +298,7 @@ $("chat-form").addEventListener("submit", async (event) => {
   setBusy(true);
   try {
     if (!activeConversation) activeConversation = await api("/api/conversations", {
-      method: "POST", body: JSON.stringify({ title: content.slice(0, 60) })
+      method: "POST", body: JSON.stringify({ title: content.slice(0, 60), project: $("project").value })
     });
     const isPaid = $("engine").value === "provider_fallback" && $("provider").value === "openai";
     if (selectedDocuments.size && (isPaid || $("engine").value !== "provider_fallback")) {
@@ -380,25 +382,30 @@ function actionButton(label, handler) {
 function clearMemoryForm() {
   editingMemory = null; $("memory-content").value = ""; $("memory-project").value = "";
 }
+function scopedURL(path) {
+  return path + "?project=" + encodeURIComponent($("project").value);
+}
 async function loadMemories() {
-  const records = await api("/api/memories"); $("memory-list").replaceChildren();
+  $("memory-export").href = scopedURL("/api/memories/export");
+  const records = await api(scopedURL("/api/memories")); $("memory-list").replaceChildren();
   for (const record of records) {
     const card = document.createElement("article"); card.className = "management-card";
     const title = document.createElement("strong");
-    title.textContent = record.kind + " · " + (record.project || "공통") + " · " + record.state;
+    title.textContent = record.kind + " · " + (record.project || "개인 보관함") + " · " + record.state;
     const text = document.createElement("p"); text.textContent = record.content;
     const source = document.createElement("small");
     source.textContent = "출처: " + (record.source_message_id || "사용자 직접 등록") +
       (record.expires_at ? " · 만료 " + new Date(record.expires_at * 1000).toLocaleString() : "");
     card.append(title, text, source);
     if (record.state === "candidate") card.append(actionButton("기억 확인", async () => {
-      await api("/api/memories/" + record.id + "/confirm", { method: "POST" }); await loadMemories();
+      await api(scopedURL("/api/memories/" + record.id + "/confirm"), { method: "POST" }); await loadMemories();
     }));
     card.append(actionButton("수정", async () => {
       editingMemory = record; $("memory-content").value = record.content;
       $("memory-kind").value = record.kind; $("memory-project").value = record.project;
-    }), actionButton("삭제", async () => {
-      await api("/api/memories/" + record.id, { method: "DELETE" });
+    }), actionButton("보관 처리", async () => {
+      if (!window.confirm("기억 원문과 이력은 보존하고, 목록·검색·모델 활용에서 제외할까요?")) return;
+      await api(scopedURL("/api/memories/" + record.id), { method: "DELETE" });
       if (editingMemory?.id === record.id) clearMemoryForm();
       await loadMemories();
     }));
@@ -590,7 +597,7 @@ $("review-send").addEventListener("click", async () => {
 
 
 async function loadDocuments() {
-  const records = await api("/api/documents");
+  const records = await api(scopedURL("/api/documents"));
   const available = new Set(records.map(record => record.id));
   for (const id of selectedDocuments) if (!available.has(id)) selectedDocuments.delete(id);
   $("documents-list").replaceChildren();
@@ -608,12 +615,12 @@ async function loadDocuments() {
       if (!busy) $("work-state").textContent = "준비됨 · 참고 문서 " + selectedDocuments.size + "개";
     });
     label.append(check, document.createTextNode(record.filename + " · " +
-      (record.project || "공통") + " · " + record.characters + "자"));
-    const link = document.createElement("a"); link.href = "/api/documents/" + record.id + "/export";
+      (record.project || "개인 보관함") + " · " + record.characters + "자"));
+    const link = document.createElement("a"); link.href = scopedURL("/api/documents/" + record.id + "/export");
     link.textContent = record.filename.toLowerCase().endsWith(".pdf") ? "추출 텍스트 내려받기" : "원문 내려받기"; link.download = record.filename.toLowerCase().endsWith(".pdf") ? record.filename + ".txt" : record.filename;
-    card.append(label, link, actionButton("삭제", async () => {
-      if (!window.confirm("문서 원문과 검색용 발췌를 삭제할까요? 대화와 출처 식별자는 남습니다.")) return;
-      await api("/api/documents/" + record.id, { method: "DELETE" });
+    card.append(label, link, actionButton("보관 처리", async () => {
+      if (!window.confirm("문서 원문과 출처는 보존하고, 목록·검색·모델 활용에서 제외할까요?")) return;
+      await api(scopedURL("/api/documents/" + record.id), { method: "DELETE" });
       selectedDocuments.delete(record.id); $("documents-results").textContent = "";
       await loadDocuments();
     }));

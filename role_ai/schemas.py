@@ -20,6 +20,7 @@ class Credentials(BaseModel):
 
 
 class ConversationCreate(BaseModel):
+    project: str = Field(default="", max_length=80)
     title: str = Field(default="새 대화", min_length=1, max_length=100)
 
     @field_validator("title")

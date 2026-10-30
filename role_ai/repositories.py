@@ -58,9 +58,12 @@ class Repository:
             Conversation.id == conversation_id, Conversation.user_id == user_id
         ))
 
-    def create_conversation(self, user_id, title):
+    def create_conversation(self, user_id, title, project=""):
         conversation = Conversation(user_id=user_id, title=title)
         self.db.add(conversation)
+        self.db.flush()
+        from role_ai.scope_data import bind_conversation
+        bind_conversation(self.db,conversation,project)
         self.db.commit()
         return conversation
 

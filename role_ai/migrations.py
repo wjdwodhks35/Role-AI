@@ -9,6 +9,7 @@ from role_ai.backup import create_backup, sqlite_path
 from role_ai.config import Settings
 from role_ai.database import Base, build_database
 from role_ai.scope_schema import SCOPE_TABLES, install_scope_guards, validate_scope_guards
+from role_ai.scope_data_schema import DATA_SCOPE_TABLES, install_data_guards, validate_data_guards
 
 BASELINE = (
     'api_usage', 'auth_sessions', 'auto_approval_audits', 'auto_approval_policies',
@@ -18,7 +19,7 @@ BASELINE = (
 )
 MIGRATIONS = [(1, BASELINE), (2, ('worker_presence', 'worker_controls')),
               (3, ('requirement_eval_suites', 'requirement_eval_runs')),
-              (4, SCOPE_TABLES)]
+              (4, SCOPE_TABLES), (5, DATA_SCOPE_TABLES)]
 
 
 class MigrationRequired(ValueError):
@@ -104,6 +105,8 @@ def initialize_database(engine, *, allow_upgrade=False):
                         except ValueError:
                             raise MigrationRequired('프로젝트 범위 구조를 검증하지 못했습니다. 분류하지 않습니다.') from None
                         classify_legacy_resources(connection)
+                    if version == 5:
+                        install_data_guards(connection)
                     connection.execute(text("INSERT INTO schema_migrations VALUES (:version, strftime('%Y-%m-%dT%H:%M:%fZ','now'))"), {'version': version})
                 else:
                     validate_tables(connection, names)
@@ -112,6 +115,11 @@ def initialize_database(engine, *, allow_upgrade=False):
                         validate_scope_guards(connection)
                     except ValueError:
                         raise MigrationRequired('프로젝트 범위 무결성 구조가 다릅니다. 자동 수정하지 않습니다.') from None
+                if version == 5:
+                    try:
+                        validate_data_guards(connection)
+                    except ValueError:
+                        raise MigrationRequired('자료 보관·대화 경계 구조가 다릅니다. 자동 수정하지 않습니다.') from None
             if connection.exec_driver_sql('PRAGMA foreign_key_check').fetchone():
                 raise MigrationRequired('외래키 무결성 검사 실패')
             connection.commit()

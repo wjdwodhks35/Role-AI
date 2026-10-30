@@ -54,7 +54,7 @@
           <option value="openclaw" disabled>OpenClaw · 비활성화</option>
         </select></label>
         <label>모델 Provider<select id="provider"></select></label>
-        <label>프로젝트<input id="project" maxlength="80" placeholder="공통"></label>
+        <label>프로젝트<input id="project" maxlength="80" placeholder="개인 보관함"></label>
         <label>전문 Skill<select id="skill"></select></label>
         <button id="probe">연결 테스트</button>
         <button id="code-open" hidden>코드 테스트 실행</button>
@@ -194,10 +194,11 @@ class AddTests(unittest.TestCase):
   <dialog id="documents-dialog">
     <div class="dialog-head"><h2>문서와 검색 근거</h2><button id="documents-close">닫기</button></div>
     <p class="muted">UTF-8 텍스트·Markdown 최대 48KB, PDF 최대 512KB·20페이지. 추출 텍스트는 최대 16,000자, 계정당 32개. PDF 원본은 보관하지 않으며 스캔 PDF OCR은 미지원.
+    프로젝트 미지정 자료는 개인 보관함에 비공개로 보존됩니다. 보관 처리하면 원문·출처는 남고 활용은 차단됩니다.
     문서는 학습·장기 기억에 자동으로 저장되지 않습니다. 키워드 또는 설정된 로컬 모델의 의미 검색을 선택할 수 있습니다.</p>
     <form id="documents-form" class="management-form">
       <label>파일<input id="documents-file" type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" required></label>
-      <label>프로젝트<input id="documents-project" maxlength="80" placeholder="공통"></label>
+      <label>프로젝트<input id="documents-project" maxlength="80" placeholder="개인 보관함"></label>
       <button type="submit" class="primary">문서 보관</button>
     </form>
     <label>검색어<input id="documents-query" maxlength="200"></label>
@@ -210,17 +211,17 @@ class AddTests(unittest.TestCase):
   </dialog>
   <dialog id="memory-dialog">
     <div class="dialog-head"><h2>장기 기억 관리</h2><button id="memory-close">닫기</button></div>
-    <p class="muted">원문이 연결된 후보는 확인 후 활용합니다. 기억은 학습 데이터에 자동 편입하지 않습니다.</p>
+    <p class="muted">원문이 연결된 후보는 확인 후 활용합니다. 보관 처리한 기억은 원문·이력을 남기고 활용에서 제외합니다. 기억은 학습 데이터에 자동 편입하지 않습니다.</p>
     <form id="memory-form" class="management-form">
       <label>분류<select id="memory-kind"><option value="user">사용자 정보</option>
         <option value="project">프로젝트</option><option value="feedback">선호·피드백</option>
         <option value="knowledge">확인된 지식</option></select></label>
-      <label>프로젝트 이름<input id="memory-project" maxlength="80" placeholder="비워두면 공통"></label>
+      <label>프로젝트 이름<input id="memory-project" maxlength="80" placeholder="비워두면 개인 보관함"></label>
       <label>내용<textarea id="memory-content" maxlength="1000" required></textarea></label>
       <button class="primary" type="submit">기억 저장</button>
       <button id="memory-clear" type="button">새 기억 작성</button>
     </form>
-    <a href="/api/memories/export" download>확인된 기억을 Markdown으로 내보내기</a>
+    <a id="memory-export" href="/api/memories/export" download>확인된 기억을 Markdown으로 내보내기</a>
     <div id="memory-list"></div>
   </dialog>
   <dialog id="learning-dialog">

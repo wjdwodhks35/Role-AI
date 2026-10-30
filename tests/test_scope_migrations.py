@@ -73,7 +73,7 @@ def test_v3_upgrade_is_explicit_additive_private_and_idempotent(legacy):
     with engine.connect() as connection:
         assert schema_status(connection)["current"] == 3
         assert not (set(inspect(connection).get_table_names()) & set(SCOPE_TABLES))
-    assert initialize_database(engine, allow_upgrade=True)["current"] == 4
+    assert initialize_database(engine, allow_upgrade=True)["current"] == MIGRATIONS[-1][0]
     assert legacy_rows(engine, old_tables) == before
     with factory() as db:
         repo = ScopeRepository(db)
@@ -122,7 +122,7 @@ def test_failure_after_classification_rolls_back_tables_rows_and_version(legacy,
         assert not list(connection.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='trigger'"))
     assert legacy_rows(engine, old_tables) == before
     monkeypatch.setattr(migrations, "validate_scope_guards", original)
-    assert initialize_database(engine, allow_upgrade=True)["current"] == 4
+    assert initialize_database(engine, allow_upgrade=True)["current"] == MIGRATIONS[-1][0]
 
 
 @pytest.mark.parametrize("damage", ["trigger", "changed_trigger", "extra_trigger", "check", "index", "index_predicate"])
@@ -160,7 +160,7 @@ def test_copy_preparation_reuses_backup_and_never_upgrades_source(legacy, tmp_pa
         prepare_scope_copy(settings, destination)
     assert not destination.exists()
     report = prepare_scope_copy(settings, destination, offline=True)
-    assert report["source_schema_version"] == 3 and report["candidate_schema_version"] == 4
+    assert report["source_schema_version"] == 3 and report["candidate_schema_version"] == MIGRATIONS[-1][0]
     assert report["activation"] == "not_activated" and not report["coding_checkpoints_included"]
     verify_backup(report["backup"])
     assert (Path(report["candidate"]) / "artifacts/synthetic.txt").read_text() == "artifact preserved"
@@ -264,7 +264,7 @@ def test_v4_copy_and_restore_preserve_revoked_grants_and_provenance(legacy, tmp_
     tables = [*old_tables, *SCOPE_TABLES]
     before = legacy_rows(engine, tables)
     report = prepare_scope_copy(settings, tmp_path / 'v4-stage', offline=True)
-    assert report['source_schema_version'] == report['candidate_schema_version'] == 4
+    assert report['source_schema_version'] == report['candidate_schema_version'] == MIGRATIONS[-1][0]
     assert report['activation'] == 'not_activated'
     verify_backup(report['backup'])
     restored = tmp_path / 'v4-restored'
@@ -335,7 +335,7 @@ def test_populated_unversioned_complete_schema_requires_explicit_upgrade(tmp_pat
             assert 'schema_migrations' not in inspect(connection).get_table_names()
             assert connection.scalar(text('SELECT count(*) FROM scoped_resources')) == 0
         assert legacy_rows(engine, old_tables) == before
-        assert initialize_database(engine, allow_upgrade=True)['current'] == 4
+        assert initialize_database(engine, allow_upgrade=True)['current'] == MIGRATIONS[-1][0]
         assert legacy_rows(engine, old_tables) == before
         with factory() as db:
             assert db.scalar(select(func.count()).select_from(ScopedResource)) == 1

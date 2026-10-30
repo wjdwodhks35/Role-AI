@@ -25,6 +25,9 @@ def main():
         ("test_project_scopes.py", "REQ-PROJECT-SCOPE", "프로젝트·버전 공유·파생 출처"),
         ("test_scope_migrations.py", "REQ-SCOPE-MIGRATION", "추가형 범위 이행·복제본·복구"),
         ("test_scope_permissions.py", "REQ-SCOPE-PERMISSION", "인증 세션·계약·자료 권한 Gate"),
+        ("test_scoped_reads.py", "REQ-SCOPED-DATA", "현재 범위 읽기 Adapter"),
+        ("test_scope_data_paths.py", "REQ-SCOPED-DATA", "문서·기억·대화·보관 경로"),
+        ("test_scope_data_migrations.py", "REQ-SCOPED-DATA", "v5 추가형 이행·원문 보존"),
     ]:
         tree = ast.parse((ROOT / "tests" / filename).read_text())
         for node in tree.body:
@@ -86,6 +89,7 @@ def main():
         ("REQ-PROJECT-SCOPE", "개인 보관함/소유권/정확 버전 읽기 Grant/철회/파생 기억 출처 보존"),
         ("REQ-SCOPE-MIGRATION", "합성 v3→v4/원문 보존/재실행/실패 rollback/복제 DB·백업 복원/운영 미적용"),
         ("REQ-SCOPE-PERMISSION", "인증 세션/소유권/정확 버전/정책 세대/철회/파생 출처 읽기 Gate, 실행 권한 확대 금지"),
+        ("REQ-SCOPED-DATA", "개인 기본 격리/명시 버전 공유/보관/대화 고정/출처 추적/v5 보존·복구"),
     ]:
         if name not in names:
             coverage.append([name, scope, "자동 검증; 실제 모델·학습·운영 반영 없음"])

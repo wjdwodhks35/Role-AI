@@ -22,14 +22,21 @@ def test_edit_cannot_create_duplicate_active_memory(signed_in):
         "content": original["content"], "kind": "feedback", "project": "separate",
         "revision": 1,
     })
-    assert separate.status_code == 200
+    assert separate.status_code == 404
+    # Scope membership is immutable. A separate project receives a new record,
+    # rather than silently retargeting an existing version and its Grants.
+    separate=signed_in.post('/api/memories',json={
+        'content':original['content'],'kind':'feedback','project':'separate'})
+    assert separate.status_code==201
+    assert separate.json()['id']!=other['id']
+    assert signed_in.get('/api/memories/'+other['id']).json()['project']==''
     expired = signed_in.patch("/api/memories/" + original["id"], json={
         "content": original["content"], "kind": "feedback", "revision": 1,
         "expires_at": time.time() - 1,
     })
     assert expired.status_code == 200
     replacement = signed_in.patch("/api/memories/" + other["id"], json={
-        "content": original["content"], "kind": "feedback", "revision": 2,
+        "content": original["content"], "kind": "feedback", "revision": 1,
     })
     assert replacement.status_code == 200
 

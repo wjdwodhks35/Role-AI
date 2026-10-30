@@ -110,3 +110,29 @@ class MemoryProvenance(Base):
         CheckConstraint("derived_version_id != source_version_id", name="scope_provenance_self"),
         Index("uq_scope_memory_source", "derived_version_id", "source_version_id", unique=True),
     )
+
+
+class SourceArchive(Base):
+    __tablename__ = 'scope_archives'
+    resource_id: Mapped[str] = mapped_column(ForeignKey('scoped_resources.id', ondelete='RESTRICT'), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='RESTRICT'))
+    created_at: Mapped[float] = mapped_column(default=time.time)
+
+
+class ConversationBinding(Base):
+    __tablename__ = 'scope_conversation_bindings'
+    conversation_id: Mapped[str] = mapped_column(ForeignKey('conversations.id', ondelete='RESTRICT'), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='RESTRICT'))
+    project_id: Mapped[str | None] = mapped_column(ForeignKey('scope_projects.id', ondelete='RESTRICT'))
+    generation: Mapped[int] = mapped_column()
+    created_at: Mapped[float] = mapped_column(default=time.time)
+    __table_args__ = (CheckConstraint('generation >= 1', name='bound_conversation_generation'),)
+
+
+class ConversationSource(Base):
+    __tablename__ = 'scope_conversation_sources'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=scope_id)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey('scope_conversation_bindings.conversation_id', ondelete='RESTRICT'))
+    version_id: Mapped[str] = mapped_column(ForeignKey('scope_resource_versions.id', ondelete='RESTRICT'))
+    grant_id: Mapped[str | None] = mapped_column(ForeignKey('scope_read_grants.id', ondelete='RESTRICT'))
+    __table_args__ = (Index('ix_conversation_source', 'conversation_id'),)

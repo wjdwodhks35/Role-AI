@@ -18,6 +18,7 @@ from role_ai.models import (
     ResourceVersion, ScopedResource, ScopePolicy, User,
 )
 from role_ai.task_contracts import ResourceRef
+from role_ai.scope_models import SourceArchive
 
 
 class ScopeError(ValueError):
@@ -223,6 +224,8 @@ class ScopeRepository:
         def evaluate(vid):
             version = self.db.get(ResourceVersion, vid, populate_existing=True)
             resource = self.db.get(ScopedResource, version.resource_id, populate_existing=True) if version else None
+            if resource is not None and self.db.get(SourceArchive, resource.id) is not None:
+                return False
             if (not resource or resource.user_id != user_id or resource.classification != "ready"
                     or resource.scope == "unresolved"):
                 return False
