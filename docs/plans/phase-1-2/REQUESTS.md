@@ -35,3 +35,9 @@
 - 새 companion은 기존 DB/artifacts와 공통 task checkpoint를 새 비활성 경로에 보존한다. 기존 Coding Agent candidate/worktree 전체, 외부 volume·모델·시크릿을 전부 포함한다고 주장하지 않는다.
 - 오래된 DB 백업의 세션/Grant·승인 활성화, 현재 철회 기록과의 대조·정책 세대 변경·운영 경로 전환은 DEC-015 별도 승인 사항이다. 이번에는 복원본을 운영에 연결하지 않는다.
 - 공유 5개 문서 PR #33 head1435db5e…는 여전히 draft/open이다. 자동 통합하지 않고 최신 구현/테스트·병합 수신은 이 진행 문서와 단계별 검토 파일에 기록한다. 공유 hub 게시/통합은 별도 범위로 남긴다.
+
+## P2-A 제외 범위
+
+- 기존 qa/bench_coding_models.py의 HostRunner/전체 모델 unload 및 qa/bench_coding_report.py의 성공·시간/VRAM 집계는 새 평가 경로에 연결하지 않는다. 파일 존재가 현재 실행 승인이라는 뜻은 아니다.
+- PR #31의 자동 테스트 기본 활성화, context 재구성, 반환 전 예약 환불·새 토큰 정산은 통합하지 않는다. 최종 후보 실모델 성능이 검증됐다고 주장하지 않는다.
+- 현재 선별한 부분은 type-only 오류 분류와 checkpoint 저장 실패 구분이다. 일반 모델/PC 도구 권한 및 실제 모델 설치/운영 설정은 확대하지 않는다.

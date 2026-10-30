@@ -22,8 +22,8 @@
 | P1-05 | dev 병합 완료 | PR #39 / `d4dbc2d9ca2ebe4382c61bf63212e2aed961509b` |
 | P1-06 | dev 병합 완료 | PR #40 / `dc7fde777b24cc4fc147a4158861bc9b1dcefc4b` |
 | P1-07 | dev 병합 완료 | PR #41 / `06900f1e52ca671896784c17ef856ac8c6a7f097` |
-| P1-08 | 로컬 검증 완료·PR 준비 | 430 시나리오·830 PASS, P1-08_REVIEW.md |
-| P2-A | 미착수 | PR30/31 선별 비교 |
+| P1-08 | dev 병합 완료 | PR #42 / `cb73dd2230c2c0fc451bb5fe0cbed8c965913431` |
+| P2-A | 로컬 검증 완료·PR 준비 | 436 시나리오·838 PASS, P2-A_REUSE.md |
 | P2-B | 미착수 | 독립 과제/채점 |
 | P2-C | 미착수 | 격리 로컬 위임 |
 | P2-D | 미착수 | 계측 |
@@ -111,3 +111,11 @@ P1-04 UI 승인 적용 및 최종 검증: 시안대로 문구/프로젝트 요�
 - CI 41023457807(4 jobs), 41023457882(Ubuntu/Windows 2 jobs) 모두 성공. 변경8개 파일, 충돌·미해결 리뷰 없음.
 - dev merge `06900f1e52ca671896784c17ef856ac8c6a7f097`, 원격 tree `08983ea92ca6de7c2964e00a7ef27c82900b242f`와 검증 트리 일치. 확인 후 P1-08 시작.
 - 운영 설정/DB/모델 실행 없음. GPU admission과 물리 hard cap을 구분한다.
+
+### P1-08 / Phase 1 완료 수신
+
+- https://github.com/wjdwodhks35/Role-AI/pull/42, head `9835e619adeac52b255fec38b951ba23ce306c34`, dev merge `cb73dd2230c2c0fc451bb5fe0cbed8c965913431`.
+- 최종 합성430 시나리오·830회 PASS, CI41026173839(4 jobs)/41026173818(2 jobs) 모두 성공. 변경10개 파일/충돌·미해결 리뷰 없음.
+- 원격 tree `9ea5afc51aab43f05ae51d630728db28f0811d04` 일치. P1-01 #34/P1-02 #36 조상 포함 확인.
+- Phase 1 코드·합성 보안/복구 통합 완료. 실제 LLM 성능/운영 배포·이행은 포함하지 않음. 완료 보고서는 외부 `PHASE1_COMPLETION_cb73dd22.md`에 실제 SHA와 한계를 기록했다.
+- 이후 이 merge에서 P2-A 시작. 공유 PR33/미병합31/32 등은 자동 통합하지 않음.

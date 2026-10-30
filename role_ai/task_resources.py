@@ -13,6 +13,8 @@ from role_ai.coding_jobs import CodingJobError, checksum
 from role_ai.coding_tasks import CodingBoundaryError
 from role_ai.gpu_resources import GpuPolicy, GpuBudgetError, admission, gpu_snapshot, read_policy
 from role_ai.task_approvals import ApprovalDenied
+from role_ai.task_errors import failure_code
+from role_ai.coding_jobs import CheckpointWriteError
 from role_ai.task_checkpoints import TaskLifecycle, TaskStateError
 
 
@@ -54,6 +56,9 @@ def failure_kind(error):
         return "scope_violation", False
     if isinstance(error, BudgetStop):
         return "budget_exhausted", False
+    storage_code = failure_code(error)
+    if storage_code in {"file_permission", "checkpoint_io"}:
+        return storage_code, False
     if isinstance(error, (ModelBusy, GpuBudgetError)):
         return "resource_busy", True
     if isinstance(error, Recoverable):
@@ -183,6 +188,8 @@ class TaskRuntime:
             "cancelled",
             "checkpoint_or_runner",
             "internal_error",
+            "file_permission",
+            "checkpoint_io",
             "interrupted_not_replayed",
             "control_requested",
             "invalid_transport_result",
@@ -223,7 +230,12 @@ class TaskRuntime:
         return data
 
     def save(self, contract, data):
-        self.lifecycle.store.files.atomic(self.path(contract.user_id, contract.task_id), data)
+        try:
+            self.lifecycle.store.files.atomic(self.path(contract.user_id, contract.task_id), data)
+        except OSError:
+            raise CheckpointWriteError(
+                "Runtime checkpoint write failed; inspect storage before resuming."
+            ) from None
 
     def status(self, session_hash, task_id):
         value = self.lifecycle.owned(session_hash, task_id)

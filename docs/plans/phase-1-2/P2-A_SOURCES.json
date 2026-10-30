@@ -1,0 +1,72 @@
+{
+  "format": "role-ai-p2-reuse-source-v1",
+  "start_dev": "cb73dd2230c2c0fc451bb5fe0cbed8c965913431",
+  "pr30": {
+    "head": "38d4d1412980d9fef35b6d9ac818b05b6efbeeb0",
+    "merged": true,
+    "merge": "a6e873c099a8a7af990ecd23b6d84d5b5fddaa5a"
+  },
+  "pr31": {
+    "head": "7e691312c5494dfce0c2168084a0fac745241985",
+    "merged": false
+  },
+  "existing_pr30_components": {
+    "role_ai/coding_agent.py": {
+      "pr30_merge_blob": "a4dbb21f2f3702724b8bd2dbe847127e02b4df4c",
+      "start_dev_blob": "a4dbb21f2f3702724b8bd2dbe847127e02b4df4c",
+      "unchanged_in_start_dev": true
+    },
+    "role_ai/coding_jobs.py": {
+      "pr30_merge_blob": "293356da217c0d7cbacef75707f6c036b5cb5dab",
+      "start_dev_blob": "293356da217c0d7cbacef75707f6c036b5cb5dab",
+      "unchanged_in_start_dev": true
+    },
+    "role_ai/coding_edits.py": {
+      "pr30_merge_blob": "a2edf8ceb6b051eaa2eca362a868c5d2ff8c4a76",
+      "start_dev_blob": "a2edf8ceb6b051eaa2eca362a868c5d2ff8c4a76",
+      "unchanged_in_start_dev": true
+    },
+    "role_ai/coding_memory.py": {
+      "pr30_merge_blob": "6c609c663411236a9503ccc55eb779b4ec0225ea",
+      "start_dev_blob": "6c609c663411236a9503ccc55eb779b4ec0225ea",
+      "unchanged_in_start_dev": true
+    },
+    "qa/bench_coding_models.py": {
+      "pr30_merge_blob": "309dd5c12957d660439a914fc17d6ea48a94669a",
+      "start_dev_blob": "309dd5c12957d660439a914fc17d6ea48a94669a",
+      "unchanged_in_start_dev": true
+    },
+    "qa/bench_coding_report.py": {
+      "pr30_merge_blob": "3f2895c5fd7ae4be77b1721fc93af3f140e28097",
+      "start_dev_blob": "3f2895c5fd7ae4be77b1721fc93af3f140e28097",
+      "unchanged_in_start_dev": true
+    }
+  },
+  "selected_pr31": {
+    "failure_code": {
+      "revision": "7e691312c5494dfce0c2168084a0fac745241985",
+      "path": "role_ai/coding_agent.py",
+      "first_line": 82,
+      "last_line": 97,
+      "source_blob": "e37d7f7d9245ca7ae95ff33fbbf010a95e79a06b",
+      "source_sha256": "61c336c93f65f9b741d7eb0e0626656fac731c8adeebd0cf7a8d1c6b9156e597"
+    },
+    "CheckpointWriteError": {
+      "revision": "7e691312c5494dfce0c2168084a0fac745241985",
+      "path": "role_ai/coding_jobs.py",
+      "first_line": 26,
+      "last_line": 27,
+      "source_blob": "46c60c2a70cb5420125431b826f86120f2cac3c8",
+      "source_sha256": "5802b81b9c66d4ba5c3644c19a6e374dc90626c4bd27b5c29c814fef83f6c141"
+    }
+  },
+  "excluded": [
+    "HostRunner",
+    "global_unload",
+    "automatic_tests_default",
+    "context_overrides",
+    "reservation_refund_and_new_settlement",
+    "legacy_aggregates"
+  ],
+  "performance": "not_measured"
+}

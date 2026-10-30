@@ -151,6 +151,8 @@ def environment(settings, contract):
                 "task_approval_api.py",
                 "task_checkpoints.py",
                 "task_resources.py",
+                "task_errors.py",
+                "coding_jobs.py",
                 "task_state_api.py",
                 "permissions.py",
                 "scope_permissions.py",
