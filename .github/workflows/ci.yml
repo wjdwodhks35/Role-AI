@@ -24,6 +24,7 @@ jobs:
       - run: node --check role_ai/static/app.js
       - run: node qa/check_web_auth.cjs
       - run: node qa/check_chat_keyboard.cjs
+      - run: node qa/check_scope_client.cjs
       - run: python -m pip install --dry-run ".[training]"
       - run: python qa/run_excel_tests.py
       - uses: actions/upload-artifact@v4

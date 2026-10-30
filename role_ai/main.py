@@ -36,6 +36,8 @@ from role_ai.skills import SKILLS
 from role_ai.requirements_eval import evaluation_router
 from role_ai.request_analysis import request_analysis_router
 from role_ai.workers import workers_router
+from role_ai.scope_api import scope_router
+from role_ai.scope_data import bound_conversation, check_tags, record_conversation_sources, require_live_session
 
 COOKIE = "role_ai_session"
 STATIC = Path(__file__).parent / "static"
@@ -147,6 +149,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     app.include_router(coding_router(authenticated, settings))
     app.include_router(policy_router(authenticated, repository, settings, providers, factory))
     app.include_router(collection_router(authenticated, repository, settings))
+    app.include_router(scope_router(authenticated,repository))
     app.include_router(documents_router(authenticated, repository, semantic))
     app.include_router(memory_router(authenticated, repository, providers))
     app.include_router(learning_router(authenticated, repository, settings, providers, ledger, hf_transport))
@@ -286,8 +289,9 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             raise HTTPException(422, "OpenAI 기본 비서 호출만 비용 조회를 지원합니다.")
         if not chat_limiter.allow(user.id):
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
+        bound_conversation(repo.db,user.id,conversation_id,body.project)
         context = AssistantContext(user.id, conversation_id, user.is_owner, False,
-                                   MemoryRepository(repo.db).context(user.id, body.content, body.project))
+                                   MemoryRepository(repo.db,actor[1].token_hash).context(user.id, body.content, body.project))
         prompt = [{"role": "system", "content": memory_prompt(body.skill, context)}]
         history = [{"role": m.role, "content": m.content} for m in items]
         prompt += (history + [{"role": "user", "content": body.content}])[-20:]
@@ -308,9 +312,22 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         except ProviderUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
 
+    def scoped_conversation_dict(item, db):
+        from role_ai.scope_models import ConversationBinding
+        from role_ai.models import Project, ScopePolicy
+        binding=db.get(ConversationBinding,item.id,populate_existing=True)
+        if not binding:
+            return {**conversation_dict(item), "scope_state":"archive"}
+        p=db.get(Project,binding.project_id,populate_existing=True) if binding.project_id else None
+        policy=db.get(ScopePolicy,binding.user_id,populate_existing=True)
+        current=(policy is not None and binding.generation==policy.generation and
+                 (binding.project_id is None or p is not None and p.state=="active"))
+        return {**conversation_dict(item), "project":p.legacy_name if p else "",
+                "scope_state":"bound" if current else "archive"}
+
     @app.get("/api/conversations")
     def conversations(actor=Depends(authenticated), repo: Repository = Depends(repository)):
-        return [conversation_dict(c) for c in repo.conversations(actor[0].id)]
+        return [scoped_conversation_dict(c,repo.db) for c in repo.conversations(actor[0].id)]
 
     @app.post("/api/conversations", status_code=201)
     def create_conversation(
@@ -319,7 +336,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     ):
         if not chat_limiter.allow(actor[0].id):
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
-        return conversation_dict(repo.create_conversation(actor[0].id, body.title))
+        return scoped_conversation_dict(repo.create_conversation(actor[0].id, body.title, body.project),repo.db)
 
     @app.get("/api/conversations/{conversation_id}/messages")
     def messages(
@@ -358,21 +375,27 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             or (body.provider or settings.default_provider) not in {"ollama", "mock"}
         ):
             raise HTTPException(403, "문서 대화는 Ollama 또는 테스트 Mock만 지원합니다.")
+        binding=bound_conversation(repo.db,user.id,conversation_id,body.project)
         if body.retrieval_mode == "semantic":
             if not body.document_ids:
                 raise HTTPException(422, "의미 검색에 사용할 문서를 선택하세요.")
-            selected = DocumentRepository(repo.db).selected_sources(
+            selected = DocumentRepository(repo.db,actor[1].token_hash).selected_sources(
                 user.id, body.project, body.document_ids)
             repo.db.rollback()
             sources = await semantic.search(body.content[:200], selected)
             document_context, sources = DocumentRepository.bound(sources)
         else:
-            document_context, sources = DocumentRepository(repo.db).context(
+            document_context, sources = DocumentRepository(repo.db,actor[1].token_hash).context(
                 user.id, body.content, body.project, body.document_ids)
         revision = conversation.revision
         history = [{"role": m.role, "content": m.content}
                    for m in repo.messages(user.id, conversation_id)]
-        memory_context = MemoryRepository(repo.db).context(user.id, body.content, body.project)
+        memory_context = MemoryRepository(repo.db,actor[1].token_hash).context(user.id, body.content, body.project)
+        import json
+        tags=[*sources,*json.loads(memory_context)]
+        bound_conversation(repo.db,user.id,conversation_id,body.project)
+        check_tags(repo.db,user.id,binding.project_id,tags)
+        require_live_session(repo.db,actor[1].token_hash,user.id)
         # Release the read transaction before waiting for the model.
         repo.db.rollback()
         try:
@@ -386,6 +409,12 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
         except ProviderUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
         try:
+            from sqlalchemy import text
+            repo.db.rollback()
+            repo.db.execute(text('BEGIN IMMEDIATE'))
+            require_live_session(repo.db,actor[1].token_hash,user.id)
+            bound_conversation(repo.db,user.id,conversation_id,body.project)
+            record_conversation_sources(repo.db,user.id,conversation_id,tags)
             repo.append_turn(user.id, conversation_id, revision, body.content, result, body.skill, sources)
         except ConcurrentTurn:
             raise HTTPException(409, "동시에 다른 메시지가 저장됐습니다. 다시 시도해 주세요.") from None

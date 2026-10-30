@@ -10,6 +10,9 @@ from sqlalchemy import func, select, text
 from role_ai.models import Document, DocumentChunk
 from role_ai.pdf_extract import extract_pdf
 from role_ai.semantic import SemanticRequest
+from role_ai.scope_data import DataAccess, archived, register_source, archive_source, check_tags, require_live_session
+from role_ai.models import ScopedResource
+from role_ai.scope_models import SourceArchive
 
 MAX_DOCUMENTS = 32
 MAX_TEXT = 16000
@@ -43,13 +46,15 @@ def document_dict(item):
 
 
 class DocumentRepository:
-    def __init__(self, db):
+    def __init__(self, db, session_hash=None):
         self.db = db
+        self.session_hash = session_hash
 
-    def get(self, uid, did):
+    def get(self, uid, did, project="", manage=False):
         item = self.db.scalar(select(Document).where(
             Document.user_id == uid, Document.id == did))
-        if not item:
+        access = DataAccess(self.db, uid, project, self.session_hash)
+        if not item or not (access.manage('document', item) if manage else access.readable('document', item)):
             raise HTTPException(404, "문서를 찾을 수 없습니다.")
         return item
 
@@ -59,11 +64,14 @@ class DocumentRepository:
         digest = hashlib.sha256(body.content.encode()).hexdigest()
         existing = self.db.scalar(select(Document).where(
             Document.user_id == uid, Document.project == body.project,
-            Document.digest == digest))
-        if existing:
+            Document.digest == digest, ~Document.id.in_(select(ScopedResource.document_id).join(
+                SourceArchive, SourceArchive.resource_id == ScopedResource.id).where(ScopedResource.kind=="document"))))
+        if existing and not archived(self.db, 'document', existing.id):
+            register_source(self.db, uid, 'document', existing)
             return existing, True
         count = self.db.scalar(select(func.count()).select_from(Document).where(
-            Document.user_id == uid))
+            Document.user_id == uid, ~Document.id.in_(select(ScopedResource.document_id).join(
+                SourceArchive, SourceArchive.resource_id == ScopedResource.id).where(ScopedResource.kind=='document'))))
         if count >= MAX_DOCUMENTS:
             raise HTTPException(409, "문서는 계정당 최대 32개입니다. 불필요한 문서를 삭제하세요.")
         item = Document(user_id=uid, filename=body.filename, content=body.content,
@@ -74,17 +82,19 @@ class DocumentRepository:
             self.db.add(DocumentChunk(document_id=item.id, position=position,
                                       content=body.content[offset:offset + 800]))
         self.db.flush()
+        register_source(self.db, uid, 'document', item)
         return item, False
 
-    def list(self, uid):
-        return list(self.db.scalars(select(Document).where(
-            Document.user_id == uid).order_by(Document.created_at.desc())))
+    def list(self, uid, project=""):
+        access = DataAccess(self.db, uid, project, self.session_hash)
+        return [row for row in self.db.scalars(access.query('document').order_by(
+            Document.created_at.desc()).limit(MAX_DOCUMENTS)) if access.readable('document', row)]
 
     def search(self, uid, query, project="", document_ids=None):
         if document_ids is not None:
             for did in set(document_ids):
-                item = self.get(uid, did)
-                if item.project not in {"", project}:
+                item = self.get(uid, did, project)
+                if not DataAccess(self.db,uid,project,self.session_hash).readable("document",item):
                     raise HTTPException(404, "현재 프로젝트에서 문서를 찾을 수 없습니다.")
             if not document_ids:
                 return []
@@ -93,34 +103,41 @@ class DocumentRepository:
             return []
         statement = select(DocumentChunk, Document).join(
             Document, Document.id == DocumentChunk.document_id).where(
-            Document.user_id == uid, Document.project.in_(["", project]))
+            Document.user_id == uid, Document.id.in_([d.id for d in self.list(uid, project)]))
         if document_ids is not None:
             statement = statement.where(Document.id.in_(document_ids))
         ranked = []
         for chunk, document in self.db.execute(statement):
+            if chunk.content != document.content[(chunk.position-1)*700:(chunk.position-1)*700+800]:
+                raise HTTPException(409,'자료 조각의 무결성을 확인할 수 없습니다.')
             score = sum(word in chunk.content.casefold() for word in words)
             if score:
                 ranked.append((score, document.id, chunk.position, {
                     "document_id": document.id, "chunk_id": chunk.id,
                     "filename": document.filename, "project": document.project,
                     "position": chunk.position, "text": chunk.content,
+                    **DataAccess(self.db,uid,project,self.session_hash).tag("document", document),
                 }))
         ranked.sort(key=lambda row: (-row[0], row[1], row[2]))
         return [row[3] for row in ranked[:5]]
 
     def selected_sources(self, uid, project, document_ids):
         for did in set(document_ids):
-            item = self.get(uid, did)
-            if item.project not in {"", project}:
+            item = self.get(uid, did, project)
+            if not DataAccess(self.db,uid,project,self.session_hash).readable("document",item):
                 raise HTTPException(404, "현재 프로젝트에서 문서를 찾을 수 없습니다.")
         if not document_ids:
             return []
         query = select(DocumentChunk, Document).join(
             Document, Document.id == DocumentChunk.document_id).where(
             Document.user_id == uid, Document.id.in_(document_ids))
+        pairs=list(self.db.execute(query))
+        if any(c.content != d.content[(c.position-1)*700:(c.position-1)*700+800] for c,d in pairs):
+            raise HTTPException(409,'자료 조각의 무결성을 확인할 수 없습니다.')
         return [{"document_id": d.id, "chunk_id": c.id, "filename": d.filename,
-                 "project": d.project, "position": c.position, "text": c.content}
-                for c, d in self.db.execute(query)]
+                 "project": d.project, "position": c.position, "text": c.content,
+                 **DataAccess(self.db,uid,project,self.session_hash).tag("document",d)}
+                for c, d in pairs]
 
     @staticmethod
     def bound(sources):
@@ -140,8 +157,8 @@ def documents_router(authenticated, repository, semantic):
     router = APIRouter(prefix="/api/documents", tags=["documents"])
 
     @router.get("")
-    def listing(actor=Depends(authenticated), repo=Depends(repository)):
-        return [document_dict(d) for d in DocumentRepository(repo.db).list(actor[0].id)]
+    def listing(project: str = "", actor=Depends(authenticated), repo=Depends(repository)):
+        return [document_dict(d) for d in DocumentRepository(repo.db,actor[1].token_hash).list(actor[0].id,project)]
 
     @router.post("", status_code=201)
     def upload(body: DocumentInput, actor=Depends(authenticated), repo=Depends(repository)):
@@ -179,10 +196,13 @@ def documents_router(authenticated, repository, semantic):
     @router.post("/semantic")
     async def semantic_search(body: SemanticRequest, actor=Depends(authenticated),
                               repo=Depends(repository)):
-        sources = DocumentRepository(repo.db).selected_sources(
+        sources = DocumentRepository(repo.db,actor[1].token_hash).selected_sources(
             actor[0].id, body.project, body.document_ids)
+        access=DataAccess(repo.db,actor[0].id,body.project,actor[1].token_hash)
         repo.db.rollback()
         results = await semantic.search(body.query, sources)
+        require_live_session(repo.db,actor[1].token_hash,actor[0].id)
+        check_tags(repo.db,actor[0].id,access.pid,sources)
         return {"mode": "semantic", "model": semantic.settings.embedding_model,
                 "sources": results, "answer_verified": False}
 
@@ -191,24 +211,31 @@ def documents_router(authenticated, repository, semantic):
                repo=Depends(repository)):
         if len(q) > 200 or len(project) > 80:
             raise HTTPException(422, "검색어 또는 프로젝트 이름이 너무 깁니다.")
-        return {"mode": "keyword", "sources": DocumentRepository(repo.db).search(
+        return {"mode": "keyword", "sources": DocumentRepository(repo.db,actor[1].token_hash).search(
             actor[0].id, q, project)}
 
     @router.get("/{document_id}")
-    def detail(document_id: str, actor=Depends(authenticated), repo=Depends(repository)):
-        item = DocumentRepository(repo.db).get(actor[0].id, document_id)
+    def detail(document_id: str, project: str = "", actor=Depends(authenticated), repo=Depends(repository)):
+        item = DocumentRepository(repo.db,actor[1].token_hash).get(actor[0].id, document_id, project)
         return {**document_dict(item), "content": item.content}
 
     @router.get("/{document_id}/export")
-    def export(document_id: str, actor=Depends(authenticated), repo=Depends(repository)):
-        item = DocumentRepository(repo.db).get(actor[0].id, document_id)
+    def export(document_id: str, project: str = "", actor=Depends(authenticated), repo=Depends(repository)):
+        item = DocumentRepository(repo.db,actor[1].token_hash).get(actor[0].id, document_id, project)
         return Response(item.content, media_type="text/plain",
                         headers={"Content-Disposition": 'attachment; filename="role-ai-document.txt"'})
 
     @router.delete("/{document_id}", status_code=204)
-    def remove(document_id: str, actor=Depends(authenticated), repo=Depends(repository)):
-        item = DocumentRepository(repo.db).get(actor[0].id, document_id)
-        repo.db.delete(item)
+    def remove(document_id: str, project: str = "", actor=Depends(authenticated), repo=Depends(repository)):
+        repo.db.rollback()
+        repo.db.execute(text("BEGIN IMMEDIATE"))
+        item=repo.db.scalar(select(Document).where(Document.id==document_id,Document.user_id==actor[0].id))
+        if not item:
+            raise HTTPException(404,"문서를 찾을 수 없습니다.")
+        if not DataAccess(repo.db,actor[0].id,project).manage('document',item,include_archived=True):
+            raise HTTPException(404,"현재 범위에서 문서를 찾을 수 없습니다.")
+        archive_source(repo.db,actor[0].id,'document',item)
         repo.db.commit()
+        return Response(status_code=204,headers={'X-Role-AI-Removal':'archived'})
 
     return router

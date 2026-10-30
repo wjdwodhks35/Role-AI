@@ -21,7 +21,9 @@ def test_document_roundtrip_dedup_and_project(signed_in):
     assert one["id"] == duplicate["id"] and duplicate["duplicate"]
     project = upload(signed_in, project="work").json()
     assert project["id"] != one["id"]
-    assert len(signed_in.get("/api/documents").json()) == 2
+    assert len(signed_in.get("/api/documents").json()) == 1
+    assert len(signed_in.get("/api/documents",params={"project":"work"}).json()) == 1
+    assert signed_in.get("/api/documents/"+project["id"]).status_code == 404
     content = signed_in.get("/api/documents/" + one["id"]).json()["content"]
     assert "리눅스" in content
     exported = signed_in.get("/api/documents/" + one["id"] + "/export")
@@ -69,7 +71,7 @@ def test_document_search_scope_and_boundaries(signed_in):
     assert result["mode"] == "keyword"
     assert {r["document_id"] for r in result["sources"]} == {common}
     selected = signed_in.get("/api/documents/search?q=리눅스&project=secret").json()
-    assert {r["document_id"] for r in selected["sources"]} == {common, private}
+    assert {r["document_id"] for r in selected["sources"]} == {private}
     assert signed_in.get("/api/documents/search?q=없는단어").json()["sources"] == []
     assert signed_in.get("/api/documents/search?q=!!!").json()["sources"] == []
     assert signed_in.get("/api/documents/search", params={"q": "x" * 201}).status_code == 422
@@ -150,7 +152,8 @@ def test_document_quota_and_cleanup(signed_in):
     assert upload(signed_in, content="문서 0").json()["duplicate"]
     assert signed_in.delete("/api/documents/" + ids[0]).status_code == 204
     with signed_in.app.state.database_factory() as db:
-        assert db.scalar(select(DocumentChunk).where(DocumentChunk.document_id == ids[0])) is None
+        assert db.scalar(select(DocumentChunk).where(DocumentChunk.document_id == ids[0])) is not None
+    assert signed_in.get("/api/documents/"+ids[0]).status_code == 404
     assert upload(signed_in, content="다시 저장").status_code == 201
 
 

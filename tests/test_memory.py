@@ -37,7 +37,7 @@ def test_memory_edit_revision_history_and_delete(signed_in):
     with signed_in.app.state.database_factory() as db:
         from sqlalchemy import select
         assert db.scalar(select(MemoryHistory).where(
-            MemoryHistory.memory_id == record["id"])) is None
+            MemoryHistory.memory_id == record["id"])) is not None
 
 
 def test_expired_and_other_project_memories_are_excluded(signed_in):
