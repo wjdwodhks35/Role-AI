@@ -10,9 +10,9 @@ from role_ai.task_approvals import ApprovalService, TaskApprovalGate, ApprovalDe
 from role_ai.contract_execution import TaskToolDispatcher
 from role_ai.permissions import PermissionGate, PermissionRequest
 from role_ai.assistant import AssistantContext, OpenClawGatewayAdapter
-from tests.test_scope_permissions import contract, reference
+from test_scope_permissions import contract, reference
 
-pytest_plugins = ["tests.test_scope_permissions"]
+pytest_plugins = ("test_scope_permissions",)
 
 
 @pytest.fixture
@@ -312,3 +312,21 @@ def test_http_approval_uses_auth_csrf_and_private_receipts(signed_in):
     )
     if csrf:
         c.headers["X-CSRF-Token"] = csrf
+
+
+def test_role_capability_removed_blocks_new_approval(approved, tmp_path):
+    from role_ai.agent_registry import default_configuration
+
+    db, _, settings, body, ref, service = approved
+    config = default_configuration().model_dump(mode="json")
+    for role in config["agents"]:
+        if role["id"] == "knowledge":
+            role["capabilities"] = []
+    import json
+
+    (tmp_path / "roles.json").write_text(json.dumps(config))
+    settings.agent_config_dir = str(tmp_path)
+    settings.agent_config_file = "roles.json"
+    with pytest.raises(ApprovalDenied, match="role_denied"):
+        service.issue("a" * 64, body)
+    assert db.get(TaskApproval, "approval") is None

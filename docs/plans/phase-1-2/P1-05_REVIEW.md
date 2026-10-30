@@ -39,10 +39,18 @@ v6에 새 승인 이력이 생긴 뒤 구버전 코드로 되돌리는 자동 �
 
 ## 실제 로컬 검증
 
-- 최종 합성 Excel QA 382 시나리오·764회 모두 통과, ordered=true, exit_code=0.
-- 원본 기존 367개 계획 행 보존, 새 15개 시나리오/31회 추가. QA updater 재실행 0 추가.
-- 검증 복사본 `/tmp/role-ai-p105-verified-r1ssmnmn`, Python/QA 116개 지문이 최종 코드와 일치.
+- 최종 합성 Excel QA 383 시나리오·765회 모두 통과, ordered=true, exit_code=0.
+- 원본 기존 367개 계획 행 보존, 새 16개 시나리오/32회 추가. QA updater 재실행 0 추가.
+- 검증 복사본 `/tmp/role-ai-p105-verified-10aigwgu`, Python/QA 116개 지문이 최종 코드와 일치.
 - 네트워크 socket 및 Docker/Ollama/GPU 명령 차단, 별도 HOME/TMPDIR·비밀 설정 없는 환경. 실제 모델/운영 DB 검증은 수행하지 않음.
-- 관련 승인·Coding·HTTP/CSRF·logout·변조·철회 검사 27 passed, v6 관련 이행/복구도 전체 QA 포함.
+- 관련 승인·Coding·HTTP/CSRF·logout·변조·철회 검사 28 passed, v6 관련 이행/복구도 전체 QA 포함.
 - Ruff 전체, diff 검사, 기존 인증/IME 및 범위 클라이언트 Node 검사 통과. 기존 Starlette/httpx deprecation warning 1건.
 - 로컬 P1-01 digest 및 기존 Coding/runtime 회귀 통과. CI/병합은 PR에서 실제 확인 후 기록한다.
+
+### PR 후 검토 보완
+
+- 새 발견: 역할 capability를 축소한 구성에서도 새 Task 승인이 발급될 수 있었다. 도구별 필수 capability를 서버 카탈로그와 함께 검사해 발급/사용 모두 차단하고 신규 반례를 추가했다. 역할 정의는 실행 권한 자체가 아니다.
+- 첫 PR CI의 tests job은 test module의 tests.* namespace import 때문에 collection 단계에서 실패했다(exit 4). 기존 test_scoped_reads와 동일한 test_scope_permissions plugin/import로 수정했다. 로컬 환경 차이를 실제 CI로 확인한 결함이며 초기 CI를 성공으로 간주하지 않는다.
+- 최종 보완 head의 로컬/CI 결과로만 병합 여부를 판단한다.
+
+최종 capability/CI import 보완 후 전체 QA 383 시나리오·765회 PASS, exit 0, 최종 코드 지문 일치.

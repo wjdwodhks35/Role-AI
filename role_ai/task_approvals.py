@@ -26,6 +26,14 @@ TOOLS = {
     "coding.sandbox_run": ("sandbox_run", "repository"),
 }
 
+REQUIRED_CAPABILITIES = {
+    "documents.read": "knowledge.search",
+    "memory.read": "knowledge.search",
+    "coding.read": "code.propose",
+    "coding.propose": "code.propose",
+    "coding.sandbox_run": "sandbox.request",
+}
+
 
 class ApprovalDenied(ValueError):
     pass
@@ -91,13 +99,19 @@ def validate_resource(db, settings, session_hash, user, contract, reference):
 
 def environment(settings, contract):
     registry = AgentRegistry(settings)
-    if contract.agent_id not in {a.id for a in registry.configuration.agents}:
+    definition = next((a for a in registry.configuration.agents if a.id == contract.agent_id), None)
+    if definition is None:
         raise ApprovalDenied("unknown_agent")
     if any(tool not in TOOLS for tool in contract.allowed_tools):
         raise ApprovalDenied("unknown_tool")
     if (
         any(tool.startswith("coding.") for tool in contract.allowed_tools)
         and contract.agent_id != "coding"
+    ):
+        raise ApprovalDenied("role_denied")
+    if any(
+        REQUIRED_CAPABILITIES[tool] not in definition.capabilities
+        for tool in contract.allowed_tools
     ):
         raise ApprovalDenied("role_denied")
     repos = {
@@ -109,6 +123,7 @@ def environment(settings, contract):
     }
     value = {
         "catalog": TOOLS,
+        "role_requirements": REQUIRED_CAPABILITIES,
         "registry": registry.config_hash,
         "mode": settings.mode,
         "coding_enabled": settings.coding_enabled,
