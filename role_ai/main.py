@@ -38,6 +38,7 @@ from role_ai.request_analysis import request_analysis_router
 from role_ai.workers import workers_router
 from role_ai.scope_api import scope_router
 from role_ai.task_approval_api import approval_router
+from role_ai.task_state_api import task_state_router
 from role_ai.scope_data import bound_conversation, check_tags, record_conversation_sources, require_live_session
 
 COOKIE = "role_ai_session"
@@ -152,6 +153,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     app.include_router(collection_router(authenticated, repository, settings))
     app.include_router(scope_router(authenticated,repository))
     app.include_router(approval_router(authenticated, repository, settings))
+    app.include_router(task_state_router(authenticated, repository, settings))
     app.include_router(documents_router(authenticated, repository, semantic))
     app.include_router(memory_router(authenticated, repository, providers))
     app.include_router(learning_router(authenticated, repository, settings, providers, ledger, hf_transport))

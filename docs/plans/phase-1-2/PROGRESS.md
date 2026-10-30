@@ -19,8 +19,8 @@
 |---|---|---|
 | P1-03 | dev 병합 완료 | `feature/p1-03-scope-permission-gate`, 아래 검토 기록 |
 | P1-04 | dev 병합 완료 | PR #38 / `67014f7a661f8d14e4ac03183bd2b6ff72a2b3c8` |
-| P1-05 | 로컬 검증 완료·PR 준비 | 385 시나리오/767 PASS, P1-05_REVIEW.md |
-| P1-06 | 미착수 | P1-05 dev 병합 후 |
+| P1-05 | dev 병합 완료 | PR #39 / `d4dbc2d9ca2ebe4382c61bf63212e2aed961509b` |
+| P1-06 | 로컬 검증 완료·PR 준비 | 402 시나리오·791 PASS, P1-06_REVIEW.md |
 | P1-07 | 미착수 | P1-06 dev 병합 후 |
 | P1-08 | 미착수 | 통합/Phase 1 완료 보고 |
 | P2-A | 미착수 | PR30/31 선별 비교 |
@@ -87,3 +87,11 @@ P1-04 UI 승인 적용 및 최종 검증: 시안대로 문구/프로젝트 요�
 
 현재 별도 worktree에서 유효 Task 승인 증거/v6·제한 도구 dispatcher·프로젝트/정책 세대 세션 키를 구현했다.
 요청 사항은 REQUESTS.md로 분리한다. P1-06 구현은 이 단계의 CI 및 dev 병합 후에만 시작한다.
+
+### P1-05 병합 수신 기록
+
+- https://github.com/wjdwodhks35/Role-AI/pull/39, 최종 head `f89b46dd8fa58c6328a3164f93771e8251185b98`.
+- 합성 QA 385 시나리오·767회 PASS. 최초 CI import 결함을 수정하고 역할 capability 및 WAL snapshot/flush 보존 반례를 보강했다.
+- 최종 CI 41019888521(4 jobs), 41019888511(Ubuntu/Windows 2 jobs) 모두 통과. 충돌·미해결 리뷰 없음.
+- dev merge `d4dbc2d9ca2ebe4382c61bf63212e2aed961509b`. 원격 tree `663af76107aeae2cadcb620e130865fe01347eba`와 로컬 검증 트리 일치.
+- 운영 v6 이행/배포 없음. 일반 외부 도구 기본 거부 유지. 이 병합 확인 후 P1-06 시작.
