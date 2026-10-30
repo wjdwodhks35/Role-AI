@@ -126,3 +126,13 @@ P1-04 UI 승인 적용 및 최종 검증: 시안대로 문구/프로젝트 요�
 - 합성436 시나리오·838회 PASS. CI41028247987(4 jobs)/41028247991(2 jobs) 모두 성공, 변경12개 파일/충돌·미해결 리뷰 없음.
 - 원격 tree `8b5550793ac99e1c5de5a7bf92ffc975931c1476`와 로컬 일치. PR30 기존 기반 유지, PR31 오류/체크포인트 일부만 이식. 원본31 미병합 보존.
 - 실제 LLM/성능/토큰·GPU 미측정. 확인 후 P2-B 시작.
+
+## P2-C — 공통 계약을 통한 기존 Coding Agent 위임
+
+- 시작 dev `bba1ba1df1a1c7aead21afc1a354978494ad8916` (#44). 독립 feature/p2-c-local-delegation.
+- common live gate/실행 상태/취소/예산 ledger와 기존 CodingAgent/CodingWorkspace/public Docker runner/독립 hidden grader 연결. 원본 repo에 자동 적용하지 않는다.
+- 선택적 고정 Windows localhost transport, 설치 모델 digest 바인딩, 신규 소스 해시 승인 무효화. 기존 UI/API/권한 기본값/Task Contract digest 변경 없음.
+- 관련 격리222개 통과. 최종 소스 전체 QA457시나리오/884실행 통과(162.74s, snapshot ad34q9cr; CI는 PR에 기록). Ruff 통과, QA 갱신 두 번째0행.
+- 실제 Windows Ollama metadata만 확인. 로컬 Docker 접근 부족으로 전체 실모델 성능은 미측정, Codex tokens/VRAM peak null. 사전검사 blocked/exit2/model_calls0. 추가 조치는 REQUESTS에 기록.
+- 실제 public+hidden Docker 연결 검사는 기존 GitHub CI job에 추가(scripted model, LLM 성능 아님). 단계 PR/CI/병합 수신은 PR 본문·외부 재개 상태 파일에 기록하며 확인 전 완료 처리하지 않는다.
+- 10 Pass: P2-C_REVIEW.md. 다음 P2-D 구현은 P2-C dev 병합 확인 후에만 시작.
