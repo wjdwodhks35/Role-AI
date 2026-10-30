@@ -16,6 +16,7 @@ from role_ai.coding_workspace import git
 from role_ai.coding_tasks import safe_path
 from role_ai.coding_runner import PINNED_IMAGE
 from role_ai.permissions import PermissionDecision
+from role_ai.gpu_resources import read_policy
 
 # Server-owned catalog. Arbitrary shell/network/model/permission-management tools are absent.
 TOOLS = {
@@ -131,6 +132,7 @@ def environment(settings, contract):
         "role_requirements": REQUIRED_CAPABILITIES,
         "registry": registry.config_hash,
         "mode": settings.mode,
+        "gpu_policy": read_policy(settings).model_dump(mode="json"),
         "coding_enabled": settings.coding_enabled,
         "image": settings.coding_image,
         "socket": hashlib.sha256(settings.code_execution_socket.encode()).hexdigest(),
@@ -142,6 +144,7 @@ def environment(settings, contract):
                 "contract_execution.py",
                 "task_approval_api.py",
                 "task_checkpoints.py",
+                "task_resources.py",
                 "task_state_api.py",
                 "permissions.py",
                 "scope_permissions.py",
