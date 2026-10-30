@@ -37,6 +37,7 @@ from role_ai.requirements_eval import evaluation_router
 from role_ai.request_analysis import request_analysis_router
 from role_ai.workers import workers_router
 from role_ai.scope_api import scope_router
+from role_ai.task_approval_api import approval_router
 from role_ai.scope_data import bound_conversation, check_tags, record_conversation_sources, require_live_session
 
 COOKIE = "role_ai_session"
@@ -150,6 +151,7 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
     app.include_router(policy_router(authenticated, repository, settings, providers, factory))
     app.include_router(collection_router(authenticated, repository, settings))
     app.include_router(scope_router(authenticated,repository))
+    app.include_router(approval_router(authenticated, repository, settings))
     app.include_router(documents_router(authenticated, repository, semantic))
     app.include_router(memory_router(authenticated, repository, providers))
     app.include_router(learning_router(authenticated, repository, settings, providers, ledger, hf_transport))
@@ -289,9 +291,10 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             raise HTTPException(422, "OpenAI 기본 비서 호출만 비용 조회를 지원합니다.")
         if not chat_limiter.allow(user.id):
             raise HTTPException(429, "잠시 후 다시 시도해 주세요.")
-        bound_conversation(repo.db,user.id,conversation_id,body.project)
+        binding = bound_conversation(repo.db,user.id,conversation_id,body.project)
         context = AssistantContext(user.id, conversation_id, user.is_owner, False,
-                                   MemoryRepository(repo.db,actor[1].token_hash).context(user.id, body.content, body.project))
+                                   MemoryRepository(repo.db,actor[1].token_hash).context(user.id, body.content, body.project),
+                                   project_id=binding.project_id, policy_generation=binding.generation)
         prompt = [{"role": "system", "content": memory_prompt(body.skill, context)}]
         history = [{"role": m.role, "content": m.content} for m in items]
         prompt += (history + [{"role": "user", "content": body.content}])[-20:]
@@ -402,7 +405,8 @@ def create_app(settings: Settings | None = None, providers=None, gateway_transpo
             result = await assistant.reply(
                 body.engine,
                 AssistantContext(user.id, conversation_id, user.is_owner, body.allow_paid,
-                                 memory_context, document_context),
+                                 memory_context, document_context,
+                                 project_id=binding.project_id, policy_generation=binding.generation),
                 history + [{"role": "user", "content": body.content}],
                 body.provider or settings.default_provider, body.skill,
             )

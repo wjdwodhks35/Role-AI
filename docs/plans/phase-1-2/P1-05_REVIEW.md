@@ -1,0 +1,60 @@
+# P1-05 유효 승인·도구 권한 집행 검토
+
+시작 dev `67014f7a661f8d14e4ac03183bd2b6ff72a2b3c8`, feature/p1-05-task-approval-gate.
+범위: P1-01 계약 불변 유지, P1-02/03 실제 자료 권한 재사용, P1-04 대화 경계와 세션 키 연결.
+
+## 구현과 수용 조건
+
+- 추가형 v6 `task_approvals`: 실제 인증/CSRF 제어면에서 발급, 정확한 계약 JSON/digest·세션·만료·환경 digest 바인딩. 승인 내용 불변, 철회만 허용하고 이력 삭제 금지. 로그아웃을 막는 AuthSession FK는 두지 않는다.
+- PermissionGate의 기존 외부 실행 기본 거부 유지. 새 TaskApprovalGate는 매 호출 현재 세션/소유권/정책/자료·버전·도구/승인/설정·구현 지문을 확인한다. 계약 ID/참조/모델 bool은 권한이 아니다.
+- 도구 카탈로그는 서버 소유: documents.read, memory.read, coding.read/propose/sandbox_run. 제안은 기존 TaskCreate 검증을 재사용하고 원본에 적용하지 않는다. 실행은 명시 등록된 신뢰된 내부 handler만 가능, 기본 실행기/HTTP 임의 실행/쉘이 없다. 계약 부여만으로 PC 실행이 활성화되지 않는다.
+- Coding 원본 HEAD/설정된 저장소/정확 경로 재검사. Git 객체 크기를 읽기 전에 제한한다. 새 권한·정책·실행 기반 코드도 모델 수정 금지 경로에 추가한다. 기존 파일·패치·테스트/배포 설정 제한 유지.
+- 작업 도중 철회·만료 시 반환 결과를 폐기한다. 이미 실행된 외부 효과를 되돌린다는 주장은 하지 않는다. 후속 실행기는 기존 격리 러너로 제한해야 한다.
+- 대화/견적은 P1-04 바인딩을 재사용하고 OpenClaw 세션 키는 사용자·대화·프로젝트·정책 세대·skill을 구분한다. Gateway tools.deny=["*"] 유지, UI 변경 없음.
+- 마이그레이션은 기존 자료 무변경·빈 승인 테이블만 추가하며 기존 DB 자동 이행을 거부한다. 실패 시 DDL/버전 rollback, 재실행 및 별도 경로 백업 복원을 합성 DB에서 검증한다. 운영 적용하지 않는다.
+
+## 10 Pass 자체 검토
+
+`06_10회_재검토_체크리스트.md` 적용. 독립 모델 평가가 아니며 통과 개수만으로 품질을 보장하지 않는다.
+
+| Pass | 새 발견/수정 | 잔여 위험 |
+|---:|---|---|
+| 1 원 요구 | 공유 기획의 대화/세션 요구도 포함 → 프로젝트·세대 세션 키 추가 | 과거 대화 자동 이관 금지 유지 |
+| 2 모순 | read Grant와 실행 승인을 혼동 가능 → 자료 적격성과 Task 승인을 별개 검사 | 향후 새 도구 별도 정책 필요 |
+| 3 기술 사실 | 계약 digest는 승인 증거 아님 → DB 증거와 현재 환경 비교 | 실제 토큰·GPU 절감 미측정 |
+| 4 현실성 | 운영 DB 접근 없이 검증 필요 → 합성 v5 DB와 격리 복사본 | 운영 이행 미승인 |
+| 5 구조 | 이중 파일 검증 우려 → 기존 TaskCreate/safe_path/ScopeReadGate 재사용 | P1-06/07 상태·누적 예산 후속 |
+| 6 보안/복구 | 세션 FK가 logout 막을 수 있음 → 역사 hash 보존·현재 세션 별도 검사 | 승인 기록 보존기한 후속 |
+| 7 자원 | 임의 shell/호스트 실행 위험 → 고정 두 테스트 명령과 기본 실행기 없음 | 실제 GPU 제한 후속 |
+| 8 결과 예측 | 실행 도중 철회 → 반환 전 최신 권한 재확인·결과 폐기 | 이미 보낸 모델 입력 회수 불가 |
+| 9 적대 반론 | 모델이 새 보안 파일 수정 가능 → 보호 경로 확대·부정 테스트 | 저장소 OS 쓰기 권한은 기존 신뢰 경계 |
+| 10 통합 | 기존 v5 단정 테스트가 추가형 버전에 부적합 → 최신 버전 기대만 변경, v4 보존 검사는 유지 | CI 완료 후에만 병합 |
+
+## 롤백
+
+운영 실행 없음. 합성 검증에서는 v5 백업을 기존 DB 위에 덮어쓰지 않고 새 비활성 경로로 복원한다.
+v6에 새 승인 이력이 생긴 뒤 구버전 코드로 되돌리는 자동 다운그레이드는 제공하지 않는다. 파일/DB/배포 승인 후 별도 전환 계획이 필요하다.
+
+실제 테스트·CI·PR/병합 수신 기록은 확인 후 추가한다.
+
+## 실제 로컬 검증
+
+- 최종 합성 Excel QA 385 시나리오·767회 모두 통과, ordered=true, exit_code=0.
+- 원본 기존 367개 계획 행 보존, 새 18개 시나리오/34회 추가. QA updater 재실행 0 추가.
+- 검증 복사본 `/tmp/role-ai-p105-verified-sjww7i7x`, Python/QA 116개 지문이 최종 코드와 일치.
+- 네트워크 socket 및 Docker/Ollama/GPU 명령 차단, 별도 HOME/TMPDIR·비밀 설정 없는 환경. 실제 모델/운영 DB 검증은 수행하지 않음.
+- 관련 승인·Coding·HTTP/CSRF·logout·변조·철회 검사 30 passed, v6 관련 이행/복구도 전체 QA 포함.
+- Ruff 전체, diff 검사, 기존 인증/IME 및 범위 클라이언트 Node 검사 통과. 기존 Starlette/httpx deprecation warning 1건.
+- 로컬 P1-01 digest 및 기존 Coding/runtime 회귀 통과. CI/병합은 PR에서 실제 확인 후 기록한다.
+
+### PR 후 검토 보완
+
+- 새 발견: 역할 capability를 축소한 구성에서도 새 Task 승인이 발급될 수 있었다. 도구별 필수 capability를 서버 카탈로그와 함께 검사해 발급/사용 모두 차단하고 신규 반례를 추가했다. 역할 정의는 실행 권한 자체가 아니다.
+- 첫 PR CI의 tests job은 test module의 tests.* namespace import 때문에 collection 단계에서 실패했다(exit 4). 기존 test_scoped_reads와 동일한 test_scope_permissions plugin/import로 수정했다. 로컬 환경 차이를 실제 CI로 확인한 결함이며 초기 CI를 성공으로 간주하지 않는다.
+- 최종 보완 head의 로컬/CI 결과로만 병합 여부를 판단한다.
+
+최종 capability/CI import 보완 후 전체 QA 385 시나리오·767회 PASS, exit 0, 최종 코드 지문 일치.
+
+- 추가 동시성 반례(verified): 명시적인 SQLite WAL BEGIN/SELECT 이후 다른 세션에서 승인 철회 시 populate_existing만으로는 오래된 승인 허용이 관측됐다. 물리 트랜잭션이 열린 호출은 transaction_not_fresh로 거부한다. Gate가 caller의 rollback/commit을 대신 수행하지 않으며 이미 flush한 미커밋 변경도 보존한다. 별도 세션 철회와 flush 보존 두 회귀 사례 추가, 관련 승인 검사 30 PASS.
+
+WAL/flush 반례 보완 최종 QA: 385 시나리오·767회 PASS, ordered=true, exit=0, Python/QA 116개 지문 일치.

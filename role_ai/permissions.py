@@ -26,3 +26,8 @@ class PermissionGate:
         """Data read adapter only; evaluate() still denies all external execution."""
         from role_ai.scope_permissions import ScopeReadGate
         return ScopeReadGate(db).evaluate(session_hash, contract, resource)
+
+    def evaluate_task(self, db, settings, session_hash, contract, tool, resource):
+        """Recheck authenticated approval and bounded tool/resource declarations."""
+        from role_ai.task_approvals import TaskApprovalGate
+        return TaskApprovalGate(db, settings).evaluate(session_hash, contract, tool, resource)

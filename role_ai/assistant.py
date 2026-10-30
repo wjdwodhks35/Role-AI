@@ -14,6 +14,8 @@ class AssistantContext:
     allow_paid: bool = False
     memory_context: str = ""
     document_context: str = ""
+    project_id: str | None = None
+    policy_generation: int = 0
 
 
 class AssistantEngine(Protocol):
@@ -117,7 +119,9 @@ class OpenClawGatewayAdapter:
     @staticmethod
     def session_key(context, skill):
         import hashlib
-        value = ":".join([context.user_id, context.conversation_id, skill])
+        import json
+        value = json.dumps([context.user_id, context.conversation_id, context.project_id,
+                            context.policy_generation, skill], separators=(",", ":"))
         return "roleai-" + hashlib.sha256(value.encode()).hexdigest()
 
     async def probe(self, context):
