@@ -71,6 +71,16 @@ jobs:
           echo "ROLE_AI_CODE_EXECUTION_IMAGE=python:3.12-slim@${digest#*@}" >> "$GITHUB_ENV"
       - run: python qa/check_code_execution.py
       - run: python qa/check_coding_runtime.py
+      - name: Verify independent grader in the existing offline Docker runtime
+        run: python qa/check_independent_grader.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-grader-ci-results
+          path: |
+            qa/results/independent-grader-ci.json
+            qa/results/independent-grader-ci-failure.log
+          if-no-files-found: ignore
       - name: Remove only this CI job's disposable test containers
         if: always()
         run: |
