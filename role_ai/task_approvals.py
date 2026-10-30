@@ -157,6 +157,7 @@ def environment(settings, contract):
                 "task_evaluation.py",
                 "task_evaluation_cases.py",
                 "task_delegation.py",
+                "task_metrics.py",
                 "task_delegation_lab.py",
                 "task_windows_transport.py",
                 "coding_agent.py",
