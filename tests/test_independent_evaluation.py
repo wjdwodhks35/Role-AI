@@ -234,3 +234,13 @@ def test_oracle_public_answers_match_independent_spec_examples():
         cases = private_cases(task_id, 7)
         assert [item[1].get("value") for item in cases[:2]] == expected
         assert all(item[0] == item[1]["arguments_after"] for item in cases)
+
+
+def test_combined_unittest_progress_does_not_hide_or_duplicate_machine_evidence():
+    from role_ai.task_evaluation import observations
+
+    expected = [answer for _, answer in private_cases("budget-check", 7)]
+    output = "test_observations ... " + MARKER + json.dumps(expected) + "\nok\n"
+    assert observations(output, 6) == expected
+    with pytest.raises(ValueError, match="one observation vector"):
+        observations(output + "inline-prefix:" + MARKER + "[]", 6)

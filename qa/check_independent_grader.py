@@ -107,6 +107,13 @@ try:
                     "a" * 64, body, resource, definition.id, 7, reference_source(definition.id)
                 )
                 receipts.append({k: v for k, v in report.items() if k != "artifact_directory"})
+                if not report["success"]:
+                    raw_log = Path(report["artifact_directory"]) / "raw.log"
+                    if raw_log.is_file():
+                        # Only this CI's fixed synthetic/reference source is run.
+                        Path("qa/results/independent-grader-ci-failure.log").write_text(
+                            raw_log.read_text()
+                        )
                 assert (
                     report["success"]
                     and report["test_count"] == 6

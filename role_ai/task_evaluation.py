@@ -48,7 +48,7 @@ class Probe(unittest.TestCase):
             except BaseException as error:row={'error':type(error).__name__}
             rows.append({**row,'arguments_after':clean(args)})
         print("""
-        + repr(MARKER)
+        + repr("\n" + MARKER)
         + """+json.dumps(rows,sort_keys=True,ensure_ascii=False,allow_nan=False),flush=True)
 """
     )
@@ -57,14 +57,18 @@ class Probe(unittest.TestCase):
 def observations(output, count):
     if type(output) is not str:
         raise ValueError("invalid runner output")
-    lines = [line[len(MARKER) :] for line in output.splitlines() if line.startswith(MARKER)]
-    if len(lines) != 1:
+    # Docker combines stderr unittest progress with stdout observations; the
+    # marker need not start a physical line. Count every occurrence, including
+    # inline duplicates, before decoding the single structured value.
+    if output.count(MARKER) != 1:
         raise ValueError("one observation vector required")
+    payload = output.split(MARKER, 1)[1].lstrip()
 
     def bad_constant(_):
         raise ValueError("nonfinite result")
 
-    value = json.loads(lines[0], parse_constant=bad_constant)
+    decoder = json.JSONDecoder(parse_constant=bad_constant)
+    value, _ = decoder.raw_decode(payload)
     if type(value) is not list or len(value) != count:
         raise ValueError("incomplete observation vector")
     for item in value:

@@ -57,3 +57,13 @@ P2-A가 CI/병합 완료된 뒤 시작했다. 운영 DB/실제 개인 데이터/
 - `/tmp/role-ai-p2b-verified-ohasaypq` Python/QA129개 지문 일치. 실제 socket·Docker/Ollama/GPU 차단·별도 HOME/TMPDIR/합성 DB.
 - Ruff 전체/diff 통과, 기존 Starlette/httpx warning1. 기존 CodeExecutor/계약 포함132 PASS, 최종 독립 채점 unit25 PASS.
 - 실제 Docker oracle 검사는 PR의 추가 CI 단계 결과로만 확인한다. 이 로컬 숫자는 실모델/실제 토큰·VRAM 측정이 아니다.
+
+### 실제 CI 피드백 보완
+
+초기 code-execution CI의 budget-check 참조 결과가 invalid_evidence로 실패했다. 원래 CI에는 raw log artifact가 없어 정확한 초기 바이트열은 미확인이다.
+재현 unit에서 Docker의 혼합 stdout/stderr처럼 unittest progress가 marker 앞에 붙으면 기존 line-start parser가 정상 vector를 놓침을 확인했다.
+marker를 전체 출력에서 정확히 한 번만 허용하고 단일 JSON 값을 decode하도록 보완했다. probe도 leading newline으로 프레임을 구분한다.
+inline 중복 marker는 오히려 더 엄격히 거부한다. 다음 실제 CI 실패에는 합성 reference의 bounded raw log도 남기도록 했다.
+초기 CI 실패를 통과로 간주하지 않으며 최종 head 전체 검사를 다시 확인한다.
+
+프레임 보완 최종 QA: 446 시나리오·864회 PASS, 신규 총10개 시나리오·26회. `/tmp/role-ai-p2b-verified-kc110v8m` Python/QA129개 지문 일치, Ruff/diff 통과. 최종 head의 실제 Docker/전체 CI 성공 전 병합하지 않는다.
