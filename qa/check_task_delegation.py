@@ -11,6 +11,7 @@ from role_ai.task_approvals import ApprovalService
 from role_ai.task_contracts import TaskContract, ResourceBudget, ReviewPolicy
 from role_ai.task_delegation import DelegationBoundary, run_delegated
 from role_ai.task_delegation_lab import synthetic_environment
+from role_ai.task_runtime_endpoint import verify_runtime
 from role_ai.task_evaluation import IndependentGrader
 from role_ai.task_evaluation_cases import reference_source
 from role_ai.task_metrics import measure_report, aggregate, MetricRecord
@@ -46,6 +47,7 @@ with tempfile.TemporaryDirectory(prefix="role-ai-delegation-ci-") as temporary:
         "budget-check",
     )
     try:
+        verify_runtime(settings, Path(temporary))
         contract = TaskContract(
             task_id="ci-delegate",
             user_id="lab",

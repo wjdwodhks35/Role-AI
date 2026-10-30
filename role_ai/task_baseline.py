@@ -21,7 +21,7 @@ from role_ai.task_evaluation import IndependentGrader
 from role_ai.task_metrics import MetricRecord, implementation_digest
 
 
-def grade_baseline(root, task_id, *, executor=None, producer_receipt=None):
+def grade_baseline(root, task_id, *, executor=None, producer_receipt=None, socket=None):
     # Verify exact public fixture/code identity before reading candidate source.
     manifest, candidate = baseline_candidate(root, task_id)
     verified = bool(
@@ -51,8 +51,13 @@ def grade_baseline(root, task_id, *, executor=None, producer_receipt=None):
         manifest["image"],
         task_id,
         seed=manifest["seed"],
+        socket=socket,
     )
     try:
+        if socket is not None and executor is None:
+            from role_ai.task_runtime_endpoint import verify_runtime
+
+            verify_runtime(settings, artifact)
         contract = TaskContract(
             task_id="direct-" + task_id,
             user_id="lab",
@@ -157,6 +162,7 @@ def main():
     parser.add_argument("--public-root", required=True)
     parser.add_argument("--task", required=True)
     parser.add_argument("--producer-receipt")
+    parser.add_argument("--socket", help="Explicit private user-owned rootless Unix socket")
     args = parser.parse_args()
     producer_receipt = None
     if args.producer_receipt:
@@ -166,7 +172,9 @@ def main():
         if path.is_symlink() or path.stat().st_size > 65536:
             raise ValueError("Bounded trusted receipt required")
         producer_receipt = CodingJobStore(path.parent).read(path)
-    report = grade_baseline(args.public_root, args.task, producer_receipt=producer_receipt)
+    report = grade_baseline(
+        args.public_root, args.task, producer_receipt=producer_receipt, socket=args.socket
+    )
     print(json.dumps(report))
     return 0 if report["metrics"]["success"] else 2
 

@@ -53,3 +53,7 @@
 3. 같은 고정 과제/seed/image/예산/기기 조건에서 실제 로컬 위임을 평가하고 실패·중단도 보존한다. 토큰 사용량 원문이 없으면 미측정 보고를 유지한다.
 
 세부 요청·공개 패키지·명령은 REQUESTS.md에 기록한다. main/운영 DB·마이그레이션/Render·Cloudflare·Compose·서버 설정/모델 설치·교체·학습은 수행하지 않는다. P2-E 실측/검증 및 dev 병합을 확인하기 전 Phase 2 완료 또는 Phase 3 착수를 선언하지 않는다.
+
+## 추천안 후속 진행 수신
+
+2026-10-31: 사용자 승인 추천안에 따라 A/B private Unix socket 선택과 교체 시 승인 무효화를 구현했다. 기존 Docker 제한 preflight를 재사용하며 기본 운영 정책/Task Contract digest는 유지한다. 새 소스용 공개 패키지를 준비했고 이전 패키지는 보존했다. Rootless helper 미설치·관리자 준비 필요와 공식 Codex usage 이벤트/현재 원문 미확보를 구분해 ROOTLESS_SETUP_PLAN/CODEX_USAGE_PROTOCOL/REQUESTS에 기록했다. 이 추가 구현은 실제 A/B 자료를 만들거나 기존 미측정 수치를 채우지 않는다. 최종 QA/CI 수신은 PR #47과 외부 재개 기록에 남긴다.

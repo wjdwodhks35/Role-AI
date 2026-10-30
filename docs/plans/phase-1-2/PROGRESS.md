@@ -154,3 +154,7 @@ PR #46 https://github.com/wjdwodhks35/Role-AI/pull/46, CI41075190144(4)/41075190
 시작 dev6ec1c887… (#46), feature/p2-e-comparison-report. 동일10과제/seed·조건·구현·반복 수 검증, 품질 회귀/미측정/공정성·CI 근거 부족 시 개선 차단. 공개 패키지와 합성 DB 독립 baseline grader 준비, 미검증 작성 주체는 실제 집계 제외. 관련45개 통과 후 추가 CLI 회귀/제공자 수신 테스트 포함 최종 전체 QA479시나리오/922실행 통과(snapshot gmqodo8e, app/qa/tests SHA256 일치). Ruff/diff 통과. 실제 비교 A0/B0/exit2로 미완료 확인.
 
 필요한 요청은 REQUESTS.md, 실제 진행/수치/미측정은 PERFORMANCE_REPORT.md, 10 Pass는 P2-E_REVIEW.md. 실제 A/B 및 Docker 접근/공정성 근거가 없어 P2-E는 Draft PR/미병합 상태로 보존한다. CI green만으로 전체 목표 완료 처리하지 않는다.
+
+## P2-E 추천안 후속 구현 (2026-10-31 KST)
+
+기존 Draft #47/head ae1012721…에서 사용자 승인 추천안을 진행했다. A/B 명시적 private rootless Unix socket 선택, inode·소유권 live 승인 바인딩, 기존 Docker resource/image preflight 재사용을 추가했다. 관련80개 통과 후 malformed info 거부를 보강한 최종 전체 QA486시나리오/952실행 통과(snapshot _qkvn9fx, app/QA/tests SHA256 일치), Ruff/diff 통과. Rootless 실제 실행은 아직 미검증이며 uidmap 관리자 준비가 필요하다. 상세 준비안은 ROOTLESS_SETUP_PLAN.md, 공식 usage 근거/수집 공백은 CODEX_USAGE_PROTOCOL.md, 새 공개 패키지·남은 조건은 REQUESTS 최신 절을 참고한다. 새 코드/QA/CI 검증 후 같은 P2-E Draft PR에 반영하며 실측 근거 부족 상태에서는 병합하지 않는다.

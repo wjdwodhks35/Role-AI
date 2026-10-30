@@ -127,7 +127,14 @@ def environment(settings, contract):
         for ref in contract.allowed_resources
         if ref.kind == "repository"
     }
+    from role_ai.task_runtime_endpoint import endpoint_binding
+
+    try:
+        bound_endpoint = endpoint_binding(settings)
+    except ValueError:
+        raise ApprovalDenied("runtime_endpoint_changed") from None
     value = {
+        "benchmark_endpoint": bound_endpoint,
         "catalog": TOOLS,
         "role_requirements": REQUIRED_CAPABILITIES,
         "registry": registry.config_hash,
@@ -161,6 +168,7 @@ def environment(settings, contract):
                 "task_comparison.py",
                 "task_baseline.py",
                 "task_delegation_lab.py",
+                "task_runtime_endpoint.py",
                 "task_windows_transport.py",
                 "coding_agent.py",
                 "code_execution.py",
