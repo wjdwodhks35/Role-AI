@@ -21,8 +21,8 @@
 | P1-04 | dev 병합 완료 | PR #38 / `67014f7a661f8d14e4ac03183bd2b6ff72a2b3c8` |
 | P1-05 | dev 병합 완료 | PR #39 / `d4dbc2d9ca2ebe4382c61bf63212e2aed961509b` |
 | P1-06 | dev 병합 완료 | PR #40 / `dc7fde777b24cc4fc147a4158861bc9b1dcefc4b` |
-| P1-07 | 로컬 검증 완료·PR 준비 | 417 시나리오·813 PASS, P1-07_REVIEW.md |
-| P1-08 | 미착수 | 통합/Phase 1 완료 보고 |
+| P1-07 | dev 병합 완료 | PR #41 / `06900f1e52ca671896784c17ef856ac8c6a7f097` |
+| P1-08 | 로컬 검증 완료·PR 준비 | 430 시나리오·830 PASS, P1-08_REVIEW.md |
 | P2-A | 미착수 | PR30/31 선별 비교 |
 | P2-B | 미착수 | 독립 과제/채점 |
 | P2-C | 미착수 | 격리 로컬 위임 |
@@ -103,3 +103,11 @@ P1-04 UI 승인 적용 및 최종 검증: 시안대로 문구/프로젝트 요�
 - CI 41021499663(4 jobs), 41021499687(Ubuntu/Windows 2 jobs) 전부 성공, 변경10개 파일/충돌·미해결 리뷰 없음.
 - dev merge `dc7fde777b24cc4fc147a4158861bc9b1dcefc4b`, 원격 tree `8944bff421e33abb4263bbb49efe077be5676a7e`와 검증 트리 일치. 확인 후 P1-07 시작.
 - DB v6 그대로, 운영 적용 없음. 일반 외부 실행 기본 거부 유지.
+
+### P1-07 병합 수신 기록
+
+- https://github.com/wjdwodhks35/Role-AI/pull/41, 최종 head `5ac54adbd357bbb7ab4a5af5b6377bb39138d448`.
+- 합성 QA 417 시나리오·813회 PASS, 실제 토큰/VRAM 계측이 아닌 fixture 검증.
+- CI 41023457807(4 jobs), 41023457882(Ubuntu/Windows 2 jobs) 모두 성공. 변경8개 파일, 충돌·미해결 리뷰 없음.
+- dev merge `06900f1e52ca671896784c17ef856ac8c6a7f097`, 원격 tree `08983ea92ca6de7c2964e00a7ef27c82900b242f`와 검증 트리 일치. 확인 후 P1-08 시작.
+- 운영 설정/DB/모델 실행 없음. GPU admission과 물리 hard cap을 구분한다.

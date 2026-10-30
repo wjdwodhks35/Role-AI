@@ -132,6 +132,12 @@ def environment(settings, contract):
         "role_requirements": REQUIRED_CAPABILITIES,
         "registry": registry.config_hash,
         "mode": settings.mode,
+        "state_roots": {
+            name: hashlib.sha256(
+                str(Path(getattr(settings, name)).absolute().resolve()).encode()
+            ).hexdigest()
+            for name in ("coding_root", "storage_dir")
+        },
         "gpu_policy": read_policy(settings).model_dump(mode="json"),
         "coding_enabled": settings.coding_enabled,
         "image": settings.coding_image,
