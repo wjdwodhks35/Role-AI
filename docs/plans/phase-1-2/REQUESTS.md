@@ -48,3 +48,10 @@
 - 현재 독립 grader는 정답이 들어 있지 않은 digest-pinned 공식 Python3.12-slim 이미지로 한정한다. 임의 앱/학습 데이터 이미지, host runner, 모델 자체 점수는 승인하지 않는다.
 - cleanup 불명확 표식은 자동으로 삭제하지 않는다. 실제 운영 프로세스 정리/표식 해제/보고서 보존기한·정리 UI는 별도 승인이다. 보고서는 사용자별64개 한도 후 중단하며 자동 삭제하지 않는다.
 - 실제 모델·Codex 토큰 성능은 아직 미측정이다. 합성 transport 테스트나 참조 코드 Docker 검사를 LLM 성능 수치로 사용하지 않는다.
+
+## P2-C 로컬 실측 환경 요청
+
+- 현재 WSL `serveradmin` 프로세스는 `/var/run/docker.sock`에 접근할 수 없다(2026-10-30 실제 `docker image ls` permission denied). docker 그룹에도 속하지 않으며 `sudo -n`은 비밀번호를 요구한다. 소켓 chmod/chown·그룹 추가·sudo 권한·서비스/Compose 설정을 변경하지 않았다.
+- 기존 Windows Ollama localhost11434, 설정된 설치 모델 digest `d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04`와 resident0을 읽기 확인했다. WSL loopback 연결은 실패하므로 선택적 고정 HTTP transport를 사용한다. 모델 설치/교체나 서버 네트워크 설정 변경은 없다.
+- 필요한 조치: 사용자가 이미 승인한 별도 격리 개발 계정/런타임에서 기존 Docker 소켓 접근을 제공하거나, 개발 계정에 대한 접근 정책을 별도로 승인·적용한 뒤 합성 lab을 실행한다. 운영 서비스 권한은 필요하지 않다. Codex가 임의로 sudo·그룹/소켓 정책을 변경하지 않는다.
+- 현재 진행: 단위/회귀 및 GitHub의 기존 disposable Docker job에서 실제 통합 실행을 검증한다. 로컬 실모델+Docker 전체 성능과 A/B 비교를 통과했다고 보고하지 않는다. 독립적으로 가능한 구현/검증은 계속한다.

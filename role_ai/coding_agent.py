@@ -94,8 +94,10 @@ def reservation(state):
 
 
 class LocalCodingModel:
-    def __init__(self, settings):
+    def __init__(self, settings, *, transport=None, sync_transport=None):
         self.settings = settings
+        self.transport = transport
+        self.sync_transport = sync_transport
 
     def complete(self, state, messages):
         local_endpoint(self.settings)
@@ -132,7 +134,7 @@ class LocalCodingModel:
 
     async def _call(self, state, messages):
         options = model_options(state)
-        provider = OllamaProvider(self.settings)
+        provider = OllamaProvider(self.settings, transport=getattr(self, "transport", None))
         async with asyncio.timeout(state.get("inference_timeout", self.settings.provider_timeout_seconds)), provider.client() as client:
             shown = await client.post("api/show", json={"model": self.settings.ollama_model})
             shown.raise_for_status()
@@ -170,7 +172,8 @@ class LocalCodingModel:
             local_endpoint(self.settings)
             seconds = model_options(state).post_task_keep_alive_seconds
             with httpx.Client(base_url=self.settings.ollama_url.rstrip("/") + "/", timeout=10,
-                              trust_env=False, follow_redirects=False) as client:
+                              trust_env=False, follow_redirects=False,
+                              transport=getattr(self, "sync_transport", None)) as client:
                 loaded = client.get("api/ps").json().get("models", [])
                 if any(m.get("name") == self.settings.ollama_model or m.get("model") == self.settings.ollama_model
                        for m in loaded):
