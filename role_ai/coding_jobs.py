@@ -23,6 +23,11 @@ class CodingJobError(ValueError):
     pass
 
 
+# Selected from PR #31 (7e691312), without automatic-tests/context/usage changes.
+class CheckpointWriteError(OSError):
+    code = "checkpoint_io"
+
+
 class JobBusy(CodingJobError):
     pass
 
@@ -133,6 +138,8 @@ class CodingJobStore:
                     yield
                 finally:
                     fcntl.flock(stream, fcntl.LOCK_UN)
+        except CheckpointWriteError:
+            raise
         except OSError:
             raise CodingJobError("Cannot lock coding task") from None
 
@@ -217,7 +224,10 @@ class CodingJobStore:
         state["history"] = state["history"][-128:]
         state["observations"] = state["observations"][-8:]
         # Bounded task count + bounded checkpoint size; no source/log dump in telemetry.
-        self.atomic(directory / "checkpoint.json", state)
+        try:
+            self.atomic(directory / "checkpoint.json", state)
+        except OSError:
+            raise CheckpointWriteError("Checkpoint write failed; inspect storage before resuming.") from None
 
     def control(self, directory):
         path = directory / "control.json"

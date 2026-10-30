@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 
 from role_ai.coding_agent import runtime_identity
-from role_ai.coding_jobs import CodingJobError, CodingJobStore, JobBusy, TaskCreate, checksum
+from role_ai.coding_jobs import CheckpointWriteError, CodingJobError, CodingJobStore, JobBusy, TaskCreate, checksum
 from role_ai.coding_project import cumulative_diff, repository
 from role_ai.coding_runner import PINNED_IMAGE
 from role_ai.coding_tasks import Contract
@@ -102,6 +102,8 @@ def coding_router(authenticated, settings):
             raise HTTPException(404, "알 수 없는 작업 제어입니다.")
         except JobBusy:
             raise HTTPException(409, "작업이 실행 중입니다. 먼저 일시중지를 요청하세요.") from None
+        except CheckpointWriteError:
+            raise HTTPException(503, "체크포인트 저장 실패입니다. 저장소를 확인하기 전 재실행하지 마세요.") from None
         except (CodingJobError, ValueError):
             raise HTTPException(409, "작업 상태·체크포인트 또는 불명확한 실행 결과를 확인하세요.") from None
 
