@@ -29,6 +29,7 @@ from role_ai.task_delegation import DelegationBoundary, run_delegated
 from role_ai.task_evaluation import IndependentGrader
 from role_ai.task_evaluation_cases import TASKS, public_task
 from role_ai.task_windows_transport import WindowsLoopbackTransport
+from role_ai.task_metrics import GpuSampler, measure_report, MetricRecord, implementation_digest
 
 
 class InstalledModel(LocalCodingModel):
@@ -209,10 +210,52 @@ def main():
     engine, db, settings, session_hash, project, ref, public = synthetic_environment(
         root, args.model, args.image, args.task, seed=args.seed
     )
+    from role_ai.coding_jobs import CodingJobStore, checksum
+
+    started = time.monotonic()
+    conditions = checksum(
+        {
+            "task_digest": public["task_digest"],
+            "image": settings.coding_image,
+            "seed": args.seed,
+            "budget": ResourceBudget(
+                max_files=2, max_steps=8, max_retries=0, timeout_seconds=300
+            ).model_dump(mode="json"),
+            "runner_memory_mib": 128,
+            "runner_cpu_millicores": 500,
+        }
+    )
     try:
         try:
             verify_runtime(settings, root)
         except (OSError, subprocess.SubprocessError, ValueError):
+            blocked = MetricRecord(
+                run_id=checksum(root.name + public["task_digest"]),
+                task_id=args.task,
+                task_digest=public["task_digest"],
+                seed=args.seed,
+                approach="local_delegate",
+                evidence="actual_run",
+                status="blocked",
+                success=False,
+                tests_total=6,
+                test_evidence="not_run",
+                charged_tokens=0,
+                model_calls=0,
+                runtime_steps=0,
+                recovery_attempts=0,
+                recovered_success=False,
+                wall_seconds=float(time.monotonic() - started),
+                gpu_samples=0,
+                gpu_measurement_errors=0,
+                gpu_sampling_complete=False,
+                model_digest=args.model_digest,
+                implementation_digest=implementation_digest(),
+                conditions_digest=conditions,
+            )
+            CodingJobStore(root).atomic(
+                root / "blocked-metrics.json", blocked.model_dump(mode="json")
+            )
             print(
                 json.dumps(
                     {
@@ -253,16 +296,38 @@ def main():
         boundary = DelegationBoundary(db, settings, session_hash, body, ref)
         boundary.life.create(session_hash, body)
         boundary.life.queue(session_hash, body.task_id, 0)
-        report = run_delegated(
-            boundary,
-            args.task,
-            args.seed,
-            model=model,
-            runner=RepositoryTestRunner(settings),
-            grader=IndependentGrader(db, settings),
+        with GpuSampler() as sampler:
+            report = run_delegated(
+                boundary,
+                args.task,
+                args.seed,
+                model=model,
+                runner=RepositoryTestRunner(settings),
+                grader=IndependentGrader(db, settings),
+            )
+        gpu = sampler.report()
+
+        metric = measure_report(
+            report,
+            boundary.runtime.load(boundary.life.store.load(body.user_id, body.task_id)),
+            gpu,
+            model_digest=args.model_digest,
+            conditions_digest=conditions,
+            wall_seconds=time.monotonic() - started,
         )
-        # Raw model actions/candidate/test logs remain in private checkpoints.
-        print(json.dumps({"artifact_root": str(root), "report": report}, ensure_ascii=False))
+        directory = boundary.life.store.directory(body.user_id, body.task_id)
+        boundary.life.store.files.atomic(directory / "gpu-samples.json", gpu)
+        boundary.life.store.files.atomic(directory / "metrics.json", metric.model_dump(mode="json"))
+        print(
+            json.dumps(
+                {
+                    "artifact_root": str(root),
+                    "report": report,
+                    "metrics": metric.model_dump(mode="json"),
+                },
+                ensure_ascii=False,
+            )
+        )
         return 0 if report["success"] else 1
     finally:
         db.close()

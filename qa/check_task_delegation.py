@@ -13,6 +13,7 @@ from role_ai.task_delegation import DelegationBoundary, run_delegated
 from role_ai.task_delegation_lab import synthetic_environment
 from role_ai.task_evaluation import IndependentGrader
 from role_ai.task_evaluation_cases import reference_source
+from role_ai.task_metrics import measure_report, aggregate
 
 
 class ScriptedModel:
@@ -74,10 +75,34 @@ with tempfile.TemporaryDirectory(prefix="role-ai-delegation-ci-") as temporary:
             grader=IndependentGrader(db, settings),
             gpu_required=False,
         )
+        ledger = boundary.runtime.load(boundary.life.store.load(contract.user_id, contract.task_id))
+        metric = measure_report(
+            report,
+            ledger,
+            {
+                "samples": [],
+                "observed_device_peak_mib": None,
+                "measurement_errors": 0,
+                "sampling_complete": False,
+            },
+            model_digest=None,
+            conditions_digest=public["task_digest"],
+            evidence="scripted_ci",
+        )
+        assert aggregate([metric])["runs"] == 0, (
+            "Synthetic CI must not count as actual LLM performance"
+        )
         output = Path("qa/results/delegation-ci.json")
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(
-            json.dumps({"scope": "scripted_model_real_docker", "report": report}, indent=2)
+            json.dumps(
+                {
+                    "scope": "scripted_model_real_docker",
+                    "report": report,
+                    "metrics": metric.model_dump(mode="json"),
+                },
+                indent=2,
+            )
         )
         assert report["success"] and report["grader"]["evidence_scope"] == "offline_docker", report
         assert report["runtime_steps"] == 4 and report["grader"]["test_count"] == 6, report

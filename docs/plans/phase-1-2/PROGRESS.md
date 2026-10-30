@@ -136,3 +136,11 @@ P1-04 UI 승인 적용 및 최종 검증: 시안대로 문구/프로젝트 요�
 - 실제 Windows Ollama metadata만 확인. 로컬 Docker 접근 부족으로 전체 실모델 성능은 미측정, Codex tokens/VRAM peak null. 사전검사 blocked/exit2/model_calls0. 추가 조치는 REQUESTS에 기록.
 - 실제 public+hidden Docker 연결 검사는 기존 GitHub CI job에 추가(scripted model, LLM 성능 아님). 단계 PR/CI/병합 수신은 PR 본문·외부 재개 상태 파일에 기록하며 확인 전 완료 처리하지 않는다.
 - 10 Pass: P2-C_REVIEW.md. 다음 P2-D 구현은 P2-C dev 병합 확인 후에만 시작.
+
+## P2-C 병합 수신
+
+PR #45 https://github.com/wjdwodhks35/Role-AI/pull/45, CI41073430341(4)/41073430533(2) 모두 success, 실제 scripted model/public+hidden Docker 연결 PASS. dev merge `1e340ab5cdea7c37c9fef90a6fc8344f14114428`, tree8b1f8d1a… 확인. 실모델 성능은 미측정이다.
+
+## P2-D — 증거 기반 성능 계측
+
+시작 dev1e340ab5… (#45), feature/p2-d-evaluation-metrics. strict 측정 기록/실제·합성 구분/실패 분모/미측정null/장치 VRAM observer 및 private 원문·중복 실행 보존. 관련48개 통과, 실제 GPU observer3샘플·오류0·관측1787MiB(model_calls0, 모델 성능 아님). 전체 QA465시나리오/900실행 통과(snapshot hz7wtce0, app/tests 해시 일치), Ruff/diff 및 QA 재갱신0행. 실제 Docker용 QA checker는 이후 측정 변환을 연결했으므로 최종 CI에서 추가 검증한다. CI·병합 확인 전 완료 처리하지 않는다. 10 Pass는 P2-D_REVIEW.md, 운영 변경 없음.

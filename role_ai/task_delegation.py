@@ -179,7 +179,10 @@ def run_delegated(boundary, task_id, seed, *, model, runner, grader, gpu_require
         "gpu_peak_measured": False,
     }
     directory = life.store.directory(contract.user_id, contract.task_id)
-    life.store.files.atomic(directory / "delegation.json", report)
+    with life.store.files.lock(directory, "receipt"):
+        if (directory / "delegation.json").exists():
+            raise ApprovalDenied("delegation_receipt_exists_new_contract_required")
+        life.store.files.atomic(directory / "delegation.json", report)
     state = None
     try:
         with life.claim(b.session_hash, contract.task_id, queued["state"].revision):
