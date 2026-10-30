@@ -5,6 +5,7 @@ from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from role_ai.database import Base
+from role_ai.task_approval_models import TaskApproval  # noqa: F401 -- register additive metadata
 
 # Register additive metadata without changing any existing content table.
 from role_ai.scope_models import (  # noqa: F401

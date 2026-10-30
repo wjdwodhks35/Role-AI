@@ -43,10 +43,14 @@ def editable_path(value: str) -> str:
         or parts[0].lower() in {"config", "prompts"}
         or parts[-1].lower().startswith(("dockerfile", "compose", "render."))
         or parts[-1].lower() in {"agents.md", "pyproject.toml", "package.json"}
+        or (parts[0]=='role_ai' and parts[-1].startswith(('scope_','task_','contract_execution','task_execution')))
         or value in {
             "role_ai/security.py", "role_ai/permissions.py", "role_ai/config.py",
             "role_ai/assistant.py", "role_ai/main.py", "role_ai/database.py",
-            "role_ai/migrations.py", "role_ai/auto_approval.py",
+            "role_ai/migrations.py", "role_ai/auto_approval.py", "role_ai/models.py",
+            "role_ai/project_scopes.py", "role_ai/scoped_reads.py", "role_ai/agent_registry.py",
+            "role_ai/coding_tasks.py", "role_ai/coding_api.py", "role_ai/coding_agent.py", "role_ai/coding_jobs.py",
+            "role_ai/coding_runner.py", "role_ai/coding_workspace.py", "role_ai/coding_project.py",
         }
     ):
         raise CodingBoundaryError("보안·설정·배포 파일은 코딩 MVP 수정 범위에서 제외됩니다.")

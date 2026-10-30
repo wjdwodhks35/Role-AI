@@ -63,12 +63,12 @@ def test_v5_adds_only_empty_boundary_tables_and_preserves_v4(version4):
     with engine.connect() as db:
         assert schema_status(db)["current"] == 4
         assert not (set(DATA_SCOPE_TABLES) & set(inspect(db).get_table_names()))
-    assert initialize_database(engine, allow_upgrade=True)["current"] == 5
+    assert initialize_database(engine, allow_upgrade=True)["current"] == MIGRATIONS[-1][0]
     assert snapshot() == before
     with engine.connect() as db:
         for name in DATA_SCOPE_TABLES:
             assert db.execute(Base.metadata.tables[name].select()).first() is None
-    assert initialize_database(engine)["current"] == 5
+    assert initialize_database(engine)["current"] == MIGRATIONS[-1][0]
     assert snapshot() == before
 
 
@@ -91,7 +91,7 @@ def test_v5_failure_rolls_back_new_ddl_and_version_without_losing_v4(version4, m
         assert schema_status(db)["current"] == 4
         assert not (set(DATA_SCOPE_TABLES) & set(inspect(db).get_table_names()))
     monkeypatch.setattr(migrations, "validate_data_guards", original)
-    assert initialize_database(engine, allow_upgrade=True)["current"] == 5
+    assert initialize_database(engine, allow_upgrade=True)["current"] == MIGRATIONS[-1][0]
 
 
 @pytest.mark.parametrize("damage", ["trigger", "check"])
