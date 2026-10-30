@@ -20,8 +20,8 @@
 | P1-03 | dev 병합 완료 | `feature/p1-03-scope-permission-gate`, 아래 검토 기록 |
 | P1-04 | dev 병합 완료 | PR #38 / `67014f7a661f8d14e4ac03183bd2b6ff72a2b3c8` |
 | P1-05 | dev 병합 완료 | PR #39 / `d4dbc2d9ca2ebe4382c61bf63212e2aed961509b` |
-| P1-06 | 로컬 검증 완료·PR 준비 | 402 시나리오·791 PASS, P1-06_REVIEW.md |
-| P1-07 | 미착수 | P1-06 dev 병합 후 |
+| P1-06 | dev 병합 완료 | PR #40 / `dc7fde777b24cc4fc147a4158861bc9b1dcefc4b` |
+| P1-07 | 로컬 검증 완료·PR 준비 | 417 시나리오·813 PASS, P1-07_REVIEW.md |
 | P1-08 | 미착수 | 통합/Phase 1 완료 보고 |
 | P2-A | 미착수 | PR30/31 선별 비교 |
 | P2-B | 미착수 | 독립 과제/채점 |
@@ -95,3 +95,11 @@ P1-04 UI 승인 적용 및 최종 검증: 시안대로 문구/프로젝트 요�
 - 최종 CI 41019888521(4 jobs), 41019888511(Ubuntu/Windows 2 jobs) 모두 통과. 충돌·미해결 리뷰 없음.
 - dev merge `d4dbc2d9ca2ebe4382c61bf63212e2aed961509b`. 원격 tree `663af76107aeae2cadcb620e130865fe01347eba`와 로컬 검증 트리 일치.
 - 운영 v6 이행/배포 없음. 일반 외부 도구 기본 거부 유지. 이 병합 확인 후 P1-06 시작.
+
+### P1-06 병합 수신 기록
+
+- https://github.com/wjdwodhks35/Role-AI/pull/40, 최종 head `547ad6eae6b252f1b22dc7fdc5a23295609d1f19`.
+- 합성 QA 402 시나리오·791회 PASS. 현재 승인, 상태 CAS, 실제 파일 잠금, 재시작 명시 재개, 변조/저장 실패/제어를 확인.
+- CI 41021499663(4 jobs), 41021499687(Ubuntu/Windows 2 jobs) 전부 성공, 변경10개 파일/충돌·미해결 리뷰 없음.
+- dev merge `dc7fde777b24cc4fc147a4158861bc9b1dcefc4b`, 원격 tree `8944bff421e33abb4263bbb49efe077be5676a7e`와 검증 트리 일치. 확인 후 P1-07 시작.
+- DB v6 그대로, 운영 적용 없음. 일반 외부 실행 기본 거부 유지.
