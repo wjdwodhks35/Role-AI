@@ -52,6 +52,11 @@ def actor(db, session_hash):
         or not re.fullmatch("[0-9a-f]{64}", session_hash)
     ):
         raise ApprovalDenied("authentication_required")
+    # SQLite SELECTs normally run without a physical transaction. Explicit read
+    # snapshots can hide revocation; flushed writes must not be rolled back here.
+    # Reject both without changing the caller's transaction or pending data.
+    if db.connection().connection.driver_connection.in_transaction:
+        raise ApprovalDenied("transaction_not_fresh")
     session = db.get(AuthSession, session_hash, populate_existing=True)
     if (
         session is None

@@ -39,11 +39,11 @@ v6에 새 승인 이력이 생긴 뒤 구버전 코드로 되돌리는 자동 �
 
 ## 실제 로컬 검증
 
-- 최종 합성 Excel QA 383 시나리오·765회 모두 통과, ordered=true, exit_code=0.
-- 원본 기존 367개 계획 행 보존, 새 16개 시나리오/32회 추가. QA updater 재실행 0 추가.
-- 검증 복사본 `/tmp/role-ai-p105-verified-10aigwgu`, Python/QA 116개 지문이 최종 코드와 일치.
+- 최종 합성 Excel QA 385 시나리오·767회 모두 통과, ordered=true, exit_code=0.
+- 원본 기존 367개 계획 행 보존, 새 18개 시나리오/34회 추가. QA updater 재실행 0 추가.
+- 검증 복사본 `/tmp/role-ai-p105-verified-sjww7i7x`, Python/QA 116개 지문이 최종 코드와 일치.
 - 네트워크 socket 및 Docker/Ollama/GPU 명령 차단, 별도 HOME/TMPDIR·비밀 설정 없는 환경. 실제 모델/운영 DB 검증은 수행하지 않음.
-- 관련 승인·Coding·HTTP/CSRF·logout·변조·철회 검사 28 passed, v6 관련 이행/복구도 전체 QA 포함.
+- 관련 승인·Coding·HTTP/CSRF·logout·변조·철회 검사 30 passed, v6 관련 이행/복구도 전체 QA 포함.
 - Ruff 전체, diff 검사, 기존 인증/IME 및 범위 클라이언트 Node 검사 통과. 기존 Starlette/httpx deprecation warning 1건.
 - 로컬 P1-01 digest 및 기존 Coding/runtime 회귀 통과. CI/병합은 PR에서 실제 확인 후 기록한다.
 
@@ -53,4 +53,8 @@ v6에 새 승인 이력이 생긴 뒤 구버전 코드로 되돌리는 자동 �
 - 첫 PR CI의 tests job은 test module의 tests.* namespace import 때문에 collection 단계에서 실패했다(exit 4). 기존 test_scoped_reads와 동일한 test_scope_permissions plugin/import로 수정했다. 로컬 환경 차이를 실제 CI로 확인한 결함이며 초기 CI를 성공으로 간주하지 않는다.
 - 최종 보완 head의 로컬/CI 결과로만 병합 여부를 판단한다.
 
-최종 capability/CI import 보완 후 전체 QA 383 시나리오·765회 PASS, exit 0, 최종 코드 지문 일치.
+최종 capability/CI import 보완 후 전체 QA 385 시나리오·767회 PASS, exit 0, 최종 코드 지문 일치.
+
+- 추가 동시성 반례(verified): 명시적인 SQLite WAL BEGIN/SELECT 이후 다른 세션에서 승인 철회 시 populate_existing만으로는 오래된 승인 허용이 관측됐다. 물리 트랜잭션이 열린 호출은 transaction_not_fresh로 거부한다. Gate가 caller의 rollback/commit을 대신 수행하지 않으며 이미 flush한 미커밋 변경도 보존한다. 별도 세션 철회와 flush 보존 두 회귀 사례 추가, 관련 승인 검사 30 PASS.
+
+WAL/flush 반례 보완 최종 QA: 385 시나리오·767회 PASS, ordered=true, exit=0, Python/QA 116개 지문 일치.

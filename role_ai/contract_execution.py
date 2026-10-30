@@ -79,6 +79,5 @@ class TaskToolDispatcher:
         else:
             raise ApprovalDenied("tool_denied")
         # A decision is not a reusable capability. Revocation/expiry while running discards the result.
-        self.db.rollback()
         self.gate.require(session_hash, contract, tool, resource)
         return result

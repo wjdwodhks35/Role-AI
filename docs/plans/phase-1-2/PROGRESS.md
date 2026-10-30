@@ -19,7 +19,7 @@
 |---|---|---|
 | P1-03 | dev 병합 완료 | `feature/p1-03-scope-permission-gate`, 아래 검토 기록 |
 | P1-04 | dev 병합 완료 | PR #38 / `67014f7a661f8d14e4ac03183bd2b6ff72a2b3c8` |
-| P1-05 | 로컬 검증 완료·PR 준비 | 383 시나리오/765 PASS, P1-05_REVIEW.md |
+| P1-05 | 로컬 검증 완료·PR 준비 | 385 시나리오/767 PASS, P1-05_REVIEW.md |
 | P1-06 | 미착수 | P1-05 dev 병합 후 |
 | P1-07 | 미착수 | P1-06 dev 병합 후 |
 | P1-08 | 미착수 | 통합/Phase 1 완료 보고 |

@@ -330,3 +330,38 @@ def test_role_capability_removed_blocks_new_approval(approved, tmp_path):
     with pytest.raises(ApprovalDenied, match="role_denied"):
         service.issue("a" * 64, body)
     assert db.get(TaskApproval, "approval") is None
+
+
+def test_explicit_wal_read_snapshot_cannot_reuse_revoked_approval(approved):
+    from sqlalchemy.orm import Session
+
+    db, _, settings, body, ref, _ = approved
+    issue(approved)
+    db.execute(text("BEGIN"))
+    assert db.execute(text("SELECT revoked_at FROM task_approvals")).scalar() is None
+    with Session(db.bind) as other:
+        other.execute(text("UPDATE task_approvals SET revoked_at=created_at WHERE id='approval'"))
+        other.commit()
+    assert (
+        TaskApprovalGate(db, settings).evaluate("a" * 64, body, "documents.read", ref).state
+        == "denied"
+    )
+
+
+def test_gate_rejects_flushed_writes_without_rolling_back_them(approved):
+    from role_ai.models import User
+
+    db, _, settings, body, ref, _ = approved
+    issue(approved)
+    user = db.get(User, "u1")
+    user.email = "pending@test.invalid"
+    db.flush()
+    assert (
+        TaskApprovalGate(db, settings).evaluate("a" * 64, body, "documents.read", ref).state
+        == "denied"
+    )
+    assert (
+        db.execute(text("SELECT email FROM users WHERE id='u1'")).scalar() == "pending@test.invalid"
+    )
+    db.rollback()
+    assert db.get(User, "u1", populate_existing=True).email == "u1@test.invalid"
