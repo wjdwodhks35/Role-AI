@@ -178,3 +178,9 @@ PR #46 https://github.com/wjdwodhks35/Role-AI/pull/46, CI41075190144(4)/41075190
 시작 dev8511e001…(#47). 사용자 “남은 작업 진행”에 따라 별도fix/runner-restrictive-umask에서 기존runner의엄격umask 읽기오류를 수정했다. work0755명시/호스트부모0700/파일0444·기존sandbox/승인/자원유지. 신규단위2개는수정전실패,수정후관련167개PASS. 실제privateRootless의umask077·기존격리/OOM/timeout/실패/cleanup검사17.392s/exit0. QAselector1행추가·기존행보존. 모델실행0/운영변경0. 전체QA·CI·PR·merge수신은확인후기록하며10Pass는FOLLOWUP_UMASK_REVIEW.md. 새core digest가되므로이전A/B점수를새소스성능으로주장하지않는다.
 
 R1최종로컬수신: 전체QA487시나리오/954실행PASS, snapshot1kbumvde와app/tests/QA해시일치. Ruff/diff통과. 소스변경에대한실제CI/PR·병합수신은확인후별도기록한다.
+
+## R1 병합 및 R2 usage 증거 보강
+
+R1 PR48 dev2689dc6e8cad3856f00993a22a782323834daf17 병합 확인. 로컬487/954·CI41207833892(4)/41207833955(2)전부success, 실제rootful/rootless restrictive-umask077 PASS, tree8d3df31c…일치/충돌·미해결리뷰없음.
+
+R2는이dev에서feature/codex-usage-evidence. offline JSONL reader/원문해시·종료코드·구간수/미측정null·범주보존·중복/잘림/경로위협거부를추가. 앱/권한/계약변경없음. 기존A10원문소계130510input/2261output재현,정의/검토부재로완전합계null/exit2. 신규모델호출0/운영변경0. docs/CODEX_USAGE_EVIDENCE.md 및 FOLLOWUP_USAGE_REVIEW.md에사용·범위·10Pass기록. 최종CI/PR/merge는검증후수신으로기록.
