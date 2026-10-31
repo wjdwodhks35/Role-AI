@@ -96,7 +96,13 @@ def bounded_read(root, relative):
             not path.is_symlink() and not getattr(path, "is_junction", lambda: False)(),
             "linked_path",
         )
-    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+    fd = os.open(
+        path,
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+        | getattr(os, "O_BINARY", 0),
+    )
     with os.fdopen(fd, "rb") as stream:
         before = os.fstat(stream.fileno())
         require(stat.S_ISREG(before.st_mode), "not_regular_file")

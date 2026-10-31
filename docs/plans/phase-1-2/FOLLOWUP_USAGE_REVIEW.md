@@ -4,7 +4,7 @@
 
 공식 CLI JSONL event·usage 문서 확인 후 기존 `.codex-local/logs` 보관 방식을 재사용했다. 문서: [OpenAI non-interactive](https://learn.chatgpt.com/docs/non-interactive-mode#make-output-machine-readable). VSCode 내부 API나 자동 가로채기/일일 계정 토큰의 비례 배분을 가정하지 않는다. 토큰 범주가 전체 비용·실제 모델 ID·성공률을 증명하지 않는 점을 명시했다.
 
-새 unit18개와 기존 wrapper 포함42개(플랫폼전용2제외)가 로컬 통과했다. 실제 기존A10세션 raw SHA/종료코드를 대조해 생성 소계130510input/2261output 및 별도cached/reasoning을 재현했다. 정의·검토가 없어 완전합계null/exit2. 새 모델/API호출0. 실제 receipt는 Git밖 FOLLOWUP_USAGE_EVIDENCE_RESULT.json 및 private root에 보관한다. 최종 Windows/Ubuntu CI·전체 회귀·PR/merge 수신은 PR/후속 상태에 기록한다.
+새 unit20개와 기존 wrapper 포함44개(플랫폼전용2제외)가 로컬 통과했다. 실제 기존A10세션 raw SHA/종료코드를 대조해 생성 소계130510input/2261output 및 별도cached/reasoning을 재현했다. 정의·검토가 없어 완전합계null/exit2. 새 모델/API호출0. 실제 receipt는 Git밖 FOLLOWUP_USAGE_EVIDENCE_RESULT.json 및 private root에 보관한다. 최종 Windows/Ubuntu CI·전체 회귀·PR/merge 수신은 PR/후속 상태에 기록한다.
 
 |Pass|새 발견/조치|잔여 위험|
 |---|---|---|

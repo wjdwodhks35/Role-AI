@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -304,6 +305,43 @@ class UsageEvidenceTests(unittest.TestCase):
             usage.bounded_read(self.root, path.name)
         with self.assertRaises((usage.EvidenceError, OSError)):
             usage.bounded_read(self.root, "missing.jsonl")
+
+    def test_crlf_utf8_raw_hash_and_private_text(self):
+        self.add("execution")
+        session = self.manifest["sessions"][0]
+        rows = events("crlf-thread")
+        rows[2]["item"]["text"] = "비공개 원문"
+        raw = (
+            b"\r\n".join(json.dumps(row, ensure_ascii=False).encode("utf-8") for row in rows)
+            + b"\r\n"
+        )
+        (self.root / session["path"]).write_bytes(raw)
+        session["sha256"] = hashlib.sha256(raw).hexdigest()
+        report = self.summarize()
+        self.assertEqual(report["records"][0]["source_sha256"], session["sha256"])
+        self.assertNotIn("비공개", json.dumps(report, ensure_ascii=False))
+        self.assertEqual(report["reported_category_subtotals"]["input_tokens"], 100)
+
+    def test_nonregular_sources_fail_without_reading_or_blocking(self):
+        directory = self.root / "directory.jsonl"
+        directory.mkdir()
+        with self.assertRaises((usage.EvidenceError, OSError)):
+            usage.bounded_read(self.root, directory.name)
+        if hasattr(os, "mkfifo"):
+            self.add("execution")
+            session = self.manifest["sessions"][0]
+            pipe = self.root / "pipe.jsonl"
+            os.mkfifo(pipe)
+            session["path"] = pipe.name
+            (self.root / "manifest.json").write_text(json.dumps(self.manifest))
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--root", str(self.root)],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(json.loads(result.stdout)["error_code"], "not_regular_file")
 
     def test_cli_preserves_unknown_and_never_prints_raw_errors(self):
         self.add("execution")
