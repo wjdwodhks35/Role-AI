@@ -65,14 +65,44 @@ def test_ollama_payload_and_metadata():
         import json
         body = json.loads(request.content)
         assert body["stream"] is False
-        assert body["options"]["num_predict"] == 512
+        assert body["think"] is False
+        assert body["options"] == {"num_predict": 512, "num_ctx": 4096}
         return httpx.Response(200, json={
-            "message": {"content": "안녕하세요"}, "prompt_eval_count": 10, "eval_count": 5,
+            "message": {"content": "안녕하세요", "thinking": "private reasoning"},
+            "prompt_eval_count": 10, "eval_count": 5,
         })
     provider = OllamaProvider(settings(), httpx.MockTransport(handler))
     reply = asyncio.run(provider.complete([{"role": "user", "content": "hello"}]))
     assert reply.provider == "ollama" and reply.text == "안녕하세요"
-    assert reply.input_tokens == 10 and not reply.simulated
+    assert reply.input_tokens == 10 and reply.output_tokens == 5 and not reply.simulated
+
+
+@pytest.mark.parametrize("content", ["", "   ", None, 123, "x" * 32001])
+def test_ollama_rejects_invalid_content_even_with_thinking(content):
+    provider = OllamaProvider(settings(), httpx.MockTransport(
+        lambda _: httpx.Response(200, json={
+            "message": {"content": content, "thinking": "private reasoning"},
+            "done_reason": "length", "eval_count": 512,
+        })
+    ))
+    with pytest.raises(ProviderUnavailable) as exc:
+        asyncio.run(provider.complete([{"role": "user", "content": "hello"}]))
+    assert "private reasoning" not in str(exc.value)
+
+
+def test_ollama_thinking_only_reply_becomes_chat_503(signed_in):
+    provider = signed_in.app.state.providers.get("ollama")
+    provider.transport = httpx.MockTransport(lambda _: httpx.Response(200, json={
+        "message": {"content": "", "thinking": "private reasoning"},
+        "done_reason": "length", "eval_count": 512,
+    }))
+    cid = signed_in.post("/api/conversations", json={}).json()["id"]
+    response = signed_in.post(f"/api/conversations/{cid}/chat", json={
+        "content": "hello", "provider": "ollama",
+    })
+    assert response.status_code == 503
+    assert "private reasoning" not in response.text
+    assert signed_in.get(f"/api/conversations/{cid}/messages").json() == []
 
 
 @pytest.mark.parametrize("case", ["timeout", "server_error", "malformed"])

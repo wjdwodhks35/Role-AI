@@ -60,6 +60,7 @@ class OllamaProvider:
                     "model": self.settings.ollama_model,
                     "messages": messages,
                     "stream": False,
+                    "think": False,
                     "keep_alive": 0 if read_policy(self.settings).enabled else "5m",
                     "options": {"num_predict": 512, "num_ctx": 4096},
                 })
