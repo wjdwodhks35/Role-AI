@@ -152,7 +152,11 @@ class CodeExecutor:
                 self.preflight(base, env)
                 work = root / "work"
                 work.mkdir(mode=0o755)
-                root.chmod(0o711)
+                # mkdir's mode is filtered by the caller's umask. The container
+                # uid needs to traverse the bind source, but host peers must not
+                # traverse its private parent. Do not change the process umask.
+                work.chmod(0o755)
+                root.chmod(0o700)
                 for filename, content in (("submission.py", request.code),
                                           ("test_submission.py", request.tests), ("runner.py", RUNNER)):
                     path = work / filename
