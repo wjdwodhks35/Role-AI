@@ -54,3 +54,20 @@
 |10 재통합|원문 private 보관·A 독립성 요청·Draft 유지|최종 head CI와 A 비교 충족 전 병합 금지|
 
 추가 독립 AI 리뷰가 아닌 10관점 자체 재검토다. core source digest f028…4061 유지, 이번 코드 변경은 QA socket 전달뿐이다. 최초 안전 검사 실패와 후속 통과를 함께 기록한다.
+
+## 독립 A 및 실제 비교 후 최종 10 Pass
+
+|관점|새 발견/조치|잔여 위험|
+|---|---|---|
+|1 요구|사용자 명시 승인 후 fresh A10생성·채점, A/B20기록 비교|목표 토큰 절감은 미입증|
+|2 모순|A100%/B40%를 기존 비교기가 regression으로 판정·변경 안 함|평가 시스템 완료를 모델 개선 달성으로 오인 금지|
+|3 사실|A실제 usage10개,전체 비용 토큰은 null|A 정확한 provider 모델ID 미확인|
+|4 실행|umask077 첫10채점 실패 원문 보존·같은 후보만022 재채점|runner 엄격 umask 호환성 후속 검토|
+|5 구조|기존 frozen source/grader/contract/digest 유지|보조 평가 스크립트는 private 원문과 함께 보관|
+|6 보안|모델도구 실행0/부모대화·oracle 전달0/후보host 실행0 확인|CLI built-in 지침 제거·완전 OS read 격리를 주장하지 않음|
+|7 자원|동일 host/runtime/image/runnerlimits,모델 예산 차이 명시|provider/hardware/context 동등성 미입증|
+|8 실패|초기환경 오류·B차단/실패/예산·미채점 모두 보존|단일시도·순차B→A,인과적 우열 일반화 불가|
+|9 반론|참조/가짜모델/사전smoke 제외,부정적 결과도 게재|작은 과제10개·비무작위 순서|
+|10 통합|기존기능 CI·리뷰 확인 후 평가도구/부정적 보고만 dev 반영|운영 위임 활성화·모델 교체·Phase3 범위 밖|
+
+모델 재호출/답안 수정/숨김 피드백 없이 동일 A 답안만 재채점했다. metadata coverage=true와 비교 한계를 함께 표시한다. 최종 docs head CI/merge 수신은 PR 본문과 외부 상태 기록에 남긴다. 독립10AI 리뷰로 표현하지 않는다.

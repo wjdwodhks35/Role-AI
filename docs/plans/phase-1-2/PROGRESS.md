@@ -164,3 +164,11 @@ PR #46 https://github.com/wjdwodhks35/Role-AI/pull/46, CI41075190144(4)/41075190
 사용자 uidmap 설치 확인 후 private Rootless daemon에서 kernel 자원 제한·기존 CodeExecutor·Coding runtime·독립 grader·위임 통합을 검증했다. QA synthetic fixture가 env socket을 덮어쓰는 문제만 명시 전달로 수정했다. core 구현 digest f028…4061은 그대로다. 전체 QA486/952는 이전 검증이며 이번에 반복 실행했다고 표현하지 않는다.
 
 고정 B10시도:4성공/3최종 채점 실패/2예산 제한/1모델 전 승인 차단. 채점7건39/42, 미채점18/60사례. 측정 backend 소계40,590(9건)/56호출, 외부 supervisor362.933235s, 장치 peak5447MiB. 실제 clock 역행으로 승인 fail-closed한 기록을 보존했고 권한/시계를 바꾸지 않았다. A0/Codex usage null/절감률 null이며 PR #47 Draft·미병합 유지. 최신 세부 수치/요청은 PERFORMANCE_REPORT/REQUESTS의 현재 절을 우선한다. 새 head CI 수신은 PR/외부 상태에 기록한다.
+
+## P2-E 독립 A 승인·실측 비교 완료
+
+사용자의 추가 독립 Codex 에이전트 명시 승인으로 fresh CLI10프로세스에서 공개 목표/stub/test만 전달했다. 모델 도구 실행0·이전 대화/oracle 전달0·후보 host 실행0. 동일 답안 교정 채점 A10/10·60/60, B4/10·39/42(7건 채점), A/B20기록 coverage=true/비교기regression/improvement=false/절감률null. A usage 생성 input130510/output2261 및 cached/reasoning 별도 category 원문을 보존했다.
+
+첫 A채점10건은 umask077 상속 때문에 runner.py 접근 거부로 모두 interrupted였다. 모델을 재호출하지 않고 worker-local022(B와 동일)에서 같은 hash 후보만 재채점했으며 초기 실패/26.642454s를 별도 보존했다. A 생성86.083067s/유효채점28.717817s, B supervisor362.933235s. provider 예산/모델ID·계측 범위/순차실험 한계를 명시했다.
+
+최종 변경은 문서와 실측 수신뿐이다. 기존 코드 기능 회귀/보안/6CI·리뷰·충돌 확인 후 평가 시스템과 부정적 결과를 기록하는 PR47을 dev에 반영한다. 로컬위임 개선/운영적용 또는 토큰절감 검증으로 해석하지 않는다. 최종 head/CI/merge SHA는 PR 본문·외부 PHASE2_COMPLETION.md와 재개 상태에 기록한다. Phase3/운영 변경은 별도 범위다.

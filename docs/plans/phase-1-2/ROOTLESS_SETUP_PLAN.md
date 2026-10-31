@@ -48,3 +48,7 @@ apt-get --simulate --no-install-recommends install uidmap
 새 사용자 daemon에 대한 검증이 실패하면 그 daemon만 중단하고 해당 평가를 미완료로 기록한다. 생성한 실험용 서비스/파일만 식별한 뒤 정리 범위를 결정하며, 자동으로 기존 image/volume/user data나 운영 Docker를 삭제하지 않는다. 시스템 패키지 제거도 다른 의존성에 영향을 줄 수 있으므로 자동 롤백하지 않는다. 합성 DB/실행 로그/실패 수신은 보존하고 운영 DB로 전환하지 않는다.
 
 이 조건이 충족되기 전에는 PR #47의 실제 A/B와 dev 병합이 미완료다. Codex 공개 기준선 및 사용량 원문 검토도 별도 필요하다.
+
+## 독립 A 채점 후 호환성 관측
+
+controller의 umask077을 상속한 첫 A worker10개는 work directory 접근 거부로 runner 시작 전에 중단됐다. 원문을 보존하고 B와 같은 worker-local umask022에서 동일 답안을 재채점해60/60을 확인했다. private 부모0700/로그0600 및 readonly/nonroot/networknone/CPU·메모리 제한은 유지했다. 기존 CodeExecutor의 umask077 호환성은 후속 개선으로 기록하며 이번 frozen source를 바꾸지 않았다.

@@ -1,4 +1,4 @@
-# Codex 사용량 근거 수집 규약 — 원문 미확보
+# Codex 사용량 근거 수집 규약 — A 생성 원문 확보, 전체 절감률 미측정
 
 2026-10-31 KST. OpenAI Docs 스킬에 따라 공식 문서를 검색/열람했다. API 호출·계정 사용량 조회·새 Codex 실행·확장 설정 변경·개인 대화 로그 열람을 수행하지 않았다. 아래는 제공 형식의 공식 근거이며 현재 실험의 수집 완료 수신이 아니다.
 
@@ -23,3 +23,9 @@
 ## 후속 확인
 
 로컬 `codex login status`는 exit0/ChatGPT 인증 방식으로 분류됐다. API key 방식이 아니며 상태 원문·계정·토큰은 공개하지 않았다. 로그인/로그아웃·계정 변경·새 Codex 추론은 수행하지 않았다. 이 확인은 추가 에이전트 실행 승인이나 실제 과제별 usage 수신이 아니다. [공식 CLI 인증 문서](https://learn.chatgpt.com/docs/auth?surface=cli)
+
+## 승인 후 실제 A 생성 usage 수신
+
+사용자가 추가 독립 Codex 실행을 명시 승인했다. CLI0.164.0 fresh10프로세스·기존 ChatGPT auth/forced login·도구 비활성·readonly·ephemeral·공개 payload만으로 답안을 생성했다. 실제 turn.completed.usage10개를 원문 대조: input130510/cached_input24064/cache_write0/output2261/reasoning_output390. 범주 중복 가능성을 보존하며 총합을 임의로 만들지 않는다. 원문은 Git 밖 `p2e-a-only-tpjpbd2o/records/*/events.jsonl`이다.
+
+이 원문은 A 생성 구간이다. B Codex 작업 정의·수정·최종 검토 구간과 일치하는 원문이 없어 전체 codex_tokens·절감률은 null이다. A/B CLI/Ollama 서로 다른 토큰을 나누지 않는다. 이전 미확보 문단은 당시 상태이며 이 절과 PERFORMANCE_REPORT를 현재 수신으로 사용한다. 새 로그인/API key/유료 API·전역 설정 변경은 없었다.
