@@ -17,6 +17,17 @@ def run(code, tests="import unittest\nclass Smoke(unittest.TestCase):\n def test
     return executor.execute(ExecutionRequest(code=code, tests=tests, approved=True))
 
 
+# This is a dedicated QA process. Exercise the real non-root container under
+# the restrictive policy that previously prevented it from opening runner.py.
+original_umask = os.umask(0o077)
+try:
+    restrictive = run("pass")
+    assert restrictive["status"] == "completed" and restrictive["exit_code"] == 0, restrictive
+finally:
+    os.umask(original_umask)
+print("PASS: restrictive umask077 real non-root Docker execution")
+
+
 with tempfile.TemporaryDirectory(prefix="role-ai-private-") as private:
     sentinel = Path(private) / "secret.txt"
     sentinel.write_text("host-secret-not-for-container")

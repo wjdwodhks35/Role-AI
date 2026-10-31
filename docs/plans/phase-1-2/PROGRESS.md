@@ -172,3 +172,9 @@ PR #46 https://github.com/wjdwodhks35/Role-AI/pull/46, CI41075190144(4)/41075190
 첫 A채점10건은 umask077 상속 때문에 runner.py 접근 거부로 모두 interrupted였다. 모델을 재호출하지 않고 worker-local022(B와 동일)에서 같은 hash 후보만 재채점했으며 초기 실패/26.642454s를 별도 보존했다. A 생성86.083067s/유효채점28.717817s, B supervisor362.933235s. provider 예산/모델ID·계측 범위/순차실험 한계를 명시했다.
 
 최종 변경은 문서와 실측 수신뿐이다. 기존 코드 기능 회귀/보안/6CI·리뷰·충돌 확인 후 평가 시스템과 부정적 결과를 기록하는 PR47을 dev에 반영한다. 로컬위임 개선/운영적용 또는 토큰절감 검증으로 해석하지 않는다. 최종 head/CI/merge SHA는 PR 본문·외부 PHASE2_COMPLETION.md와 재개 상태에 기록한다. Phase3/운영 변경은 별도 범위다.
+
+## R1 — P2-E 후속 umask 호환성
+
+시작 dev8511e001…(#47). 사용자 “남은 작업 진행”에 따라 별도fix/runner-restrictive-umask에서 기존runner의엄격umask 읽기오류를 수정했다. work0755명시/호스트부모0700/파일0444·기존sandbox/승인/자원유지. 신규단위2개는수정전실패,수정후관련167개PASS. 실제privateRootless의umask077·기존격리/OOM/timeout/실패/cleanup검사17.392s/exit0. QAselector1행추가·기존행보존. 모델실행0/운영변경0. 전체QA·CI·PR·merge수신은확인후기록하며10Pass는FOLLOWUP_UMASK_REVIEW.md. 새core digest가되므로이전A/B점수를새소스성능으로주장하지않는다.
+
+R1최종로컬수신: 전체QA487시나리오/954실행PASS, snapshot1kbumvde와app/tests/QA해시일치. Ruff/diff통과. 소스변경에대한실제CI/PR·병합수신은확인후별도기록한다.

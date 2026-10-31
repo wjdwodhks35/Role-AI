@@ -16,6 +16,7 @@ def main():
     existing = {row[9] for row in sheet.iter_rows(min_row=2, values_only=True)}
     added = 0
     for filename, requirement, category in [
+        ("test_code_execution_permissions.py", "REQ-CODE-EXECUTION", "umask·비root bind·호스트 부모 비공개"),
         ("test_agent_registry.py", "REQ-AGENT-CONFIG", "역할 구성·권한 경계"),
         ("test_baseline_manifest.py", "REQ-BASELINE", "읽기 전용 기준선"),
         ("test_coding_workspace.py", "REQ-CODING-WORKSPACE", "코딩 작업·격리 파일 변경"),
