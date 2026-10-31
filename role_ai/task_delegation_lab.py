@@ -29,6 +29,7 @@ from role_ai.task_delegation import DelegationBoundary, run_delegated
 from role_ai.task_evaluation import IndependentGrader
 from role_ai.task_evaluation_cases import TASKS, public_task
 from role_ai.task_windows_transport import WindowsLoopbackTransport
+from role_ai.task_runtime_endpoint import bind_endpoint, verify_runtime
 from role_ai.task_metrics import GpuSampler, measure_report, MetricRecord, implementation_digest
 
 
@@ -70,33 +71,6 @@ class InstalledModel(LocalCodingModel):
 
     def release(self, state):
         return False
-
-
-def verify_runtime(settings, root):
-    """Read-only check before any inference; no pull, chmod, sudo or host fallback."""
-    import shutil
-
-    executable = shutil.which("docker")
-    if not executable or not settings.code_execution_socket.startswith("/"):
-        raise ValueError("Existing Docker runtime unavailable")
-    result = subprocess.run(
-        [
-            executable,
-            "--host",
-            "unix://" + settings.code_execution_socket,
-            "image",
-            "inspect",
-            settings.coding_image,
-            "--format",
-            "{{.Id}}",
-        ],
-        env={"PATH": os.environ["PATH"], "HOME": str(root), "DOCKER_CONFIG": str(root)},
-        capture_output=True,
-        timeout=10,
-        check=False,
-    )
-    if result.returncode or not result.stdout.startswith(b"sha256:"):
-        raise ValueError("Existing installed Docker image/socket unavailable; no inference started")
 
 
 def synthetic_environment(root, model, image, task_id, *, seed=7, timeout=300, socket=None):
@@ -154,6 +128,8 @@ def synthetic_environment(root, model, image, task_id, *, seed=7, timeout=300, s
         code_execution_socket=socket or "/var/run/docker.sock",
         provider_timeout_seconds=min(timeout, 120),
     )
+    if socket is not None:
+        bind_endpoint(settings, socket)
     # New synthetic settings only, never an operating GPU policy.
     write_policy(
         settings, GpuPolicy(enabled=True, limit_mib=6144, reserve_mib=1024, inference_mib=4096)
@@ -197,6 +173,9 @@ def main():
     parser.add_argument("--task", choices=[t.id for t in TASKS], required=True)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument(
+        "--socket", help="Explicit private user-owned rootless Unix socket; no context changes"
+    )
+    parser.add_argument(
         "--windows-loopback",
         action="store_true",
         help="Explicit WSL to existing Windows localhost only, no service/config changes",
@@ -208,23 +187,14 @@ def main():
         parser.error("Exact installed model SHA256 required")
     root = Path(tempfile.mkdtemp(prefix="role-ai-delegation-lab-"))
     engine, db, settings, session_hash, project, ref, public = synthetic_environment(
-        root, args.model, args.image, args.task, seed=args.seed
+        root, args.model, args.image, args.task, seed=args.seed, socket=args.socket
     )
     from role_ai.coding_jobs import CodingJobStore, checksum
 
     started = time.monotonic()
-    conditions = checksum(
-        {
-            "task_digest": public["task_digest"],
-            "image": settings.coding_image,
-            "seed": args.seed,
-            "budget": ResourceBudget(
-                max_files=2, max_steps=8, max_retries=0, timeout_seconds=300
-            ).model_dump(mode="json"),
-            "runner_memory_mib": 128,
-            "runner_cpu_millicores": 500,
-        }
-    )
+    from role_ai.task_comparison import conditions_digest
+
+    conditions = conditions_digest(args.task, args.seed, args.image)
     try:
         try:
             verify_runtime(settings, root)

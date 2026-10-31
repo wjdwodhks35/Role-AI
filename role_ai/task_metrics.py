@@ -23,7 +23,7 @@ class MetricRecord(BaseModel):
     task_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     seed: int
     approach: Literal["local_delegate", "codex_direct"]
-    evidence: Literal["actual_run", "scripted_ci", "test_double"]
+    evidence: Literal["actual_run", "scripted_ci", "test_double", "unverified_submission"]
     status: Literal[
         "succeeded",
         "failed",
@@ -39,14 +39,14 @@ class MetricRecord(BaseModel):
     tests_total: int = Field(ge=1)
     test_evidence: Literal["offline_docker", "test_double", "not_run"]
     model_tokens: int | None = Field(default=None, ge=0)
-    charged_tokens: int = Field(ge=0)
+    charged_tokens: int | None = Field(default=None, ge=0)
     codex_tokens: int | None = Field(default=None, ge=0)
     codex_usage_receipt_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
-    model_calls: int = Field(ge=0)
-    runtime_steps: int = Field(ge=0)
-    recovery_attempts: int = Field(ge=0)
-    recovered_success: bool
-    wall_seconds: float = Field(ge=0, allow_inf_nan=False)
+    model_calls: int | None = Field(default=None, ge=0)
+    runtime_steps: int | None = Field(default=None, ge=0)
+    recovery_attempts: int | None = Field(default=None, ge=0)
+    recovered_success: bool | None = None
+    wall_seconds: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     observed_device_peak_mib: int | None = Field(default=None, ge=0)
     gpu_samples: int = Field(ge=0)
     gpu_measurement_errors: int = Field(ge=0)
@@ -248,6 +248,7 @@ def aggregate(records, *, evidence="actual_run"):
     chosen = [r for r in checked if r.evidence == evidence]
     scored = [r for r in chosen if r.tests_passed is not None]
     recovery = [r for r in chosen if r.recovery_attempts]
+    scored_recovery = [r for r in recovery if r.recovered_success is not None]
 
     def total(field):
         values = [getattr(r, field) for r in chosen]
@@ -256,7 +257,10 @@ def aggregate(records, *, evidence="actual_run"):
     return {
         "evidence": evidence,
         "runs": len(chosen),
-        "excluded_synthetic_runs": len(checked) - len(chosen),
+        "excluded_synthetic_runs": sum(
+            r.evidence in {"scripted_ci", "test_double"} for r in checked if r not in chosen
+        ),
+        "excluded_non_actual_runs": len(checked) - len(chosen),
         "status_counts": {
             s: sum(r.status == s for r in chosen) for s in sorted({r.status for r in chosen})
         },
@@ -274,8 +278,11 @@ def aggregate(records, *, evidence="actual_run"):
         "wall_seconds": total("wall_seconds"),
         "model_calls": total("model_calls"),
         "recovery_runs": len(recovery),
-        "recovery_success_rate": sum(r.recovered_success for r in recovery) / len(recovery)
-        if recovery
+        "recovery_unknown_runs": sum(r.recovery_attempts is None for r in chosen),
+        "recovery_unscored_runs": len(recovery) - len(scored_recovery),
+        "recovery_success_rate": sum(r.recovered_success is True for r in scored_recovery)
+        / len(scored_recovery)
+        if scored_recovery
         else None,
         "codex_token_reduction": None,
         "reservations_are_measurement": False,

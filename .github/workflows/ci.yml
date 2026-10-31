@@ -83,6 +83,7 @@ jobs:
             qa/results/independent-grader-ci.json
             qa/results/independent-grader-ci-failure.log
             qa/results/delegation-ci.json
+            qa/results/direct-baseline-ci.json
           if-no-files-found: ignore
       - name: Remove only this CI job's disposable test containers
         if: always()

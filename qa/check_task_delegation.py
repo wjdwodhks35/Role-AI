@@ -11,9 +11,12 @@ from role_ai.task_approvals import ApprovalService
 from role_ai.task_contracts import TaskContract, ResourceBudget, ReviewPolicy
 from role_ai.task_delegation import DelegationBoundary, run_delegated
 from role_ai.task_delegation_lab import synthetic_environment
+from role_ai.task_runtime_endpoint import verify_runtime
 from role_ai.task_evaluation import IndependentGrader
 from role_ai.task_evaluation_cases import reference_source
-from role_ai.task_metrics import measure_report, aggregate
+from role_ai.task_metrics import measure_report, aggregate, MetricRecord
+from role_ai.task_comparison import export_public
+from role_ai.task_baseline import grade_baseline
 
 
 class ScriptedModel:
@@ -42,8 +45,10 @@ with tempfile.TemporaryDirectory(prefix="role-ai-delegation-ci-") as temporary:
         "synthetic-not-an-installed-model",
         os.environ["ROLE_AI_CODE_EXECUTION_IMAGE"],
         "budget-check",
+        socket=os.environ.get("ROLE_AI_CODE_EXECUTION_SOCKET"),
     )
     try:
+        verify_runtime(settings, Path(temporary))
         contract = TaskContract(
             task_id="ci-delegate",
             user_id="lab",
@@ -109,6 +114,26 @@ with tempfile.TemporaryDirectory(prefix="role-ai-delegation-ci-") as temporary:
     finally:
         db.close()
         engine.dispose()
+# A real Docker grade does not establish that a candidate was produced by Codex.
+
+with tempfile.TemporaryDirectory(prefix="role-ai-direct-ci-") as baseline_root:
+    export_public(baseline_root, seed=7, image=os.environ["ROLE_AI_CODE_EXECUTION_IMAGE"])
+    (Path(baseline_root) / "budget-check" / "solution.py").write_text(
+        reference_source("budget-check")
+    )
+    baseline = grade_baseline(
+        baseline_root, "budget-check", socket=os.environ.get("ROLE_AI_CODE_EXECUTION_SOCKET")
+    )
+    baseline_metric = MetricRecord.model_validate_json(json.dumps(baseline["metrics"]))
+    assert baseline_metric.success and baseline_metric.test_evidence == "offline_docker"
+    assert (
+        baseline_metric.evidence == "unverified_submission"
+        and aggregate([baseline_metric])["runs"] == 0
+    )
+    Path("qa/results/direct-baseline-ci.json").write_text(json.dumps(baseline, indent=2))
+print(
+    "PASS: direct baseline actual Docker grade; unknown producer/Codex usage excluded from actual A/B"
+)
 print(
     "PASS: common contract -> scripted Coding Agent -> public Docker -> independent Docker -> succeeded; no model calls"
 )
